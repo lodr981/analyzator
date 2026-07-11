@@ -134,7 +134,13 @@ input[type=file]{display:none}
 .stars{color:var(--volt);font-size:11px;letter-spacing:1px}
 
 /* ===== plán z chatu ===== */
-.planbox{margin-bottom:18px}
+.planbox{
+  position:sticky;
+  bottom:calc(64px + env(safe-area-inset-bottom));
+  z-index:15;background:var(--bg);
+  border-top:1px solid var(--line);
+  padding-top:10px;margin-top:16px;
+}
 #planText{
   width:100%;box-sizing:border-box;resize:vertical;
   background:var(--surf);border:1px solid var(--line);border-radius:16px;

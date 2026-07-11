@@ -34,15 +34,21 @@ async function initPostgres() {
       payload       JSONB NOT NULL
     );
   `);
-  await pool.query('ALTER TABLE activities ADD COLUMN IF NOT EXISTS fp TEXT;');
-  await pool.query('CREATE INDEX IF NOT EXISTS idx_activities_fp ON activities(fp);');
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS plan_state (
-      id         INT PRIMARY KEY,
-      updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-      state      JSONB NOT NULL
-    );
-  `);
+  // Nekritické rozšíření schématu — případná chyba nesmí shodit celý Postgres
+  // (jinak bychom spadli na souborové úložiště a přišli o data v DB).
+  try {
+    await pool.query('ALTER TABLE activities ADD COLUMN IF NOT EXISTS fp TEXT;');
+    await pool.query('CREATE INDEX IF NOT EXISTS idx_activities_fp ON activities(fp);');
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS plan_state (
+        id         INT PRIMARY KEY,
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        state      JSONB NOT NULL
+      );
+    `);
+  } catch (e) {
+    console.error('DDL rozšíření selhalo (pokračuji na Postgresu):', e.message);
+  }
   backend = 'postgres';
 }
 
@@ -72,6 +78,13 @@ function writeFile(list) {
 
 // ---- veřejné API ----
 
+// Bezpečně převede vstup na validní ISO datum, jinak null (ochrana INSERTu).
+function validDate(v) {
+  if (!v) return null;
+  const d = new Date(v);
+  return isNaN(d.getTime()) ? null : d.toISOString();
+}
+
 // Uloží jednu aktivitu (record = { id, ts, summary, coach, labels }).
 export async function addActivity(record) {
   if (backend === 'postgres') {
@@ -84,7 +97,7 @@ export async function addActivity(record) {
        ON CONFLICT (id) DO NOTHING`,
       [
         record.id,
-        s.startTime || null,
+        validDate(s.startTime),
         s.sport || null,
         s.distanceKm ?? null,
         s.durationSec ?? null,

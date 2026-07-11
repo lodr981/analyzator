@@ -14,7 +14,7 @@
   <meta name="apple-mobile-web-app-title" content="TEMPO" />
   <meta name="mobile-web-app-capable" content="yes" />
 
-  <link rel="stylesheet" href="/styles.css?v=8" />
+  <link rel="stylesheet" href="/styles.css?v=9" />
 </head>
 <body>
   <div class="app">
@@ -84,16 +84,16 @@
 
     <!-- ===== OBRAZOVKA: PLÁN Z CHATU ===== -->
     <div id="screen-plan" hidden>
-      <div class="hgreet">Plán týdne 💬<small>Vlož zprávu od trenéra — AI ti ji rozloží</small></div>
-
-      <div class="planbox">
-        <textarea id="planText" rows="3" placeholder="Vlož sem zprávu od trenéra (i se závodem), nebo napiš změnu — třeba: jsem nemocný, 2 dny volno…"></textarea>
-        <button id="planSend" class="planbtn">Rozložit týden</button>
-        <div class="msg" id="planMsg"></div>
-      </div>
+      <div class="hgreet">Plán týdne 💬<small>Vlož zprávu od trenéra — AI ti ji rozloží. Můžeš dál psát změny.</small></div>
 
       <div id="planWeek"></div>
       <div id="planChat"></div>
+
+      <div class="planbox">
+        <div class="msg" id="planMsg"></div>
+        <textarea id="planText" rows="2" placeholder="Vlož zprávu od trenéra, nebo napiš změnu — třeba: jsem nemocný, 2 dny volno…"></textarea>
+        <button id="planSend" class="planbtn">Rozložit týden</button>
+      </div>
     </div>
 
     <!-- ===== OBRAZOVKA: HISTORIE ===== -->
@@ -127,6 +127,6 @@
     </nav>
   </div>
 
-  <script src="/app.js?v=8"></script>
+  <script src="/app.js?v=9"></script>
 </body>
 </html>

@@ -230,6 +230,7 @@ async function sendPlanMessage() {
     planText.value = '';
     planMsg.className = 'msg';
     renderPlan(state);
+    setTimeout(() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }), 50);
   } catch (err) {
     planMsg.textContent = '⚠️ ' + err.message;
     planMsg.className = 'msg err';
@@ -255,6 +256,10 @@ function renderPlan(state) {
   chat.innerHTML = (state.messages || [])
     .map((m) => `<div class="pmsg ${m.role === 'user' ? 'user' : 'ai'}">${esc(m.text)}</div>`)
     .join('');
+
+  // po prvním plánu už jde jen doplňovat / měnit
+  const hasPlan = !!(state.plan && state.plan.days?.length);
+  planSend.textContent = hasPlan ? 'Poslat úpravu' : 'Rozložit týden';
 }
 
 function fmtDate(iso) {
