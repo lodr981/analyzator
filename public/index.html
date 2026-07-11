@@ -14,7 +14,7 @@
   <meta name="apple-mobile-web-app-title" content="TEMPO" />
   <meta name="mobile-web-app-capable" content="yes" />
 
-  <link rel="stylesheet" href="/styles.css?v=19" />
+  <link rel="stylesheet" href="/styles.css?v=20" />
 </head>
 <body>
   <div class="app">
@@ -94,8 +94,9 @@
 
     <!-- ===== OBRAZOVKA: PARŤÁK CHAT ===== -->
     <div id="screen-chat" hidden>
-      <div class="hgreet">Parťák 🧠<small>Zeptej se na porovnání tréninků, napiš váhu, co jsi jedl…</small></div>
+      <div class="hgreet">Parťák 🧠<small>Zeptej se na porovnání tréninků, napiš váhu, výšku, co jsi jedl…</small></div>
 
+      <div id="chatAiOff" class="dbwarn" hidden>⚠️ Parťák zatím <b>neběží</b> — chybí AI klíč. Na Railway přidej proměnnou <b>ANTHROPIC_API_KEY</b>, jinak nejde chatovat ani zapisovat váhu/výšku/výživu.</div>
       <div id="chatMsgs"></div>
 
       <div class="planbox">
@@ -229,6 +230,6 @@
     </nav>
   </div>
 
-  <script src="/app.js?v=19"></script>
+  <script src="/app.js?v=20"></script>
 </body>
 </html>

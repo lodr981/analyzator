@@ -225,7 +225,11 @@ async function loadChat() {
   chatLoaded = true;
   try {
     const res = await fetch('/api/chat');
-    if (res.ok) renderChat(await res.json());
+    if (res.ok) {
+      const state = await res.json();
+      $('chatAiOff').hidden = state.aiEnabled !== false;
+      renderChat(state);
+    }
   } catch {}
 }
 
