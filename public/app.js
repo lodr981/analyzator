@@ -93,9 +93,11 @@ async function uploadFile(file) {
   }
 }
 
-function render({ summary, coach, labels }) {
+function render(data) {
+  const { summary, coach, labels } = data;
   $('title').firstChild.textContent = labels.sportIcon + ' ' + labels.sport;
   $('subtitle').textContent = fmtDate(summary.startTime);
+  $('dupNote').style.display = data.duplicate ? '' : 'none';
 
   const r = $('rating');
   r.textContent = '★'.repeat(coach.rating) + '☆'.repeat(5 - coach.rating);

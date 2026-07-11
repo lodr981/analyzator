@@ -7,7 +7,7 @@ import { parseActivity } from './src/parse.js';
 import { evaluate, sportLabel, sportIcon, fmtDuration } from './src/coach.js';
 import { aiEnabled, generateCoachComment } from './src/aiCoach.js';
 import { generatePlan, planAiEnabled } from './src/aiPlan.js';
-import { initDb, dbBackend, addActivity, listActivities, deleteActivity, getPlan, savePlan } from './src/db.js';
+import { initDb, dbBackend, addActivity, listActivities, deleteActivity, findByFingerprint, getPlan, savePlan } from './src/db.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -20,6 +20,10 @@ const upload = multer({
 
 const genId = () => Date.now() + '-' + Math.random().toString(36).slice(2, 8);
 
+// Otisk aktivity pro rozpoznání duplicity (stejný soubor nahraný znovu).
+const fingerprint = (s) =>
+  [s.sport || '', s.startTime || '', s.distanceKm ?? '', s.durationSec ?? ''].join('|');
+
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
 
@@ -28,6 +32,16 @@ app.post('/api/upload', upload.single('activity'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'Žádný soubor. Nahraj .FIT, .TCX nebo .GPX.' });
   try {
     const summary = await parseActivity(req.file.buffer, req.file.originalname);
+
+    // Duplicita? Vrať už uloženou aktivitu (ušetří i AI volání).
+    const fp = fingerprint(summary);
+    try {
+      const existing = await findByFingerprint(fp);
+      if (existing) return res.json({ ...existing, duplicate: true });
+    } catch (dbErr) {
+      console.error('DB dup-check error:', dbErr.message);
+    }
+
     const coach = evaluate(summary);
 
     // Pokud je nastavený API klíč, nech text trenéra napsat Claude.
@@ -40,6 +54,7 @@ app.post('/api/upload', upload.single('activity'), async (req, res) => {
     const record = {
       id: genId(),
       ts: Date.now(),
+      fp,
       summary,
       coach,
       labels: {

@@ -34,6 +34,8 @@ async function initPostgres() {
       payload       JSONB NOT NULL
     );
   `);
+  await pool.query('ALTER TABLE activities ADD COLUMN IF NOT EXISTS fp TEXT;');
+  await pool.query('CREATE INDEX IF NOT EXISTS idx_activities_fp ON activities(fp);');
   await pool.query(`
     CREATE TABLE IF NOT EXISTS plan_state (
       id         INT PRIMARY KEY,
@@ -77,8 +79,8 @@ export async function addActivity(record) {
     const c = record.coach || {};
     await pool.query(
       `INSERT INTO activities
-         (id, activity_date, sport, distance_km, duration_sec, avg_hr, rating, ai_generated, payload)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+         (id, activity_date, sport, distance_km, duration_sec, avg_hr, rating, ai_generated, fp, payload)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
        ON CONFLICT (id) DO NOTHING`,
       [
         record.id,
@@ -89,6 +91,7 @@ export async function addActivity(record) {
         s.avgHr ?? null,
         c.rating ?? null,
         Boolean(c.aiGenerated),
+        record.fp || null,
         record,
       ]
     );
@@ -98,6 +101,16 @@ export async function addActivity(record) {
     writeFile(list.slice(0, 500));
   }
   return record;
+}
+
+// Najde aktivitu podle otisku (duplicita), nebo null.
+export async function findByFingerprint(fp) {
+  if (!fp) return null;
+  if (backend === 'postgres') {
+    const { rows } = await pool.query('SELECT payload FROM activities WHERE fp = $1 LIMIT 1', [fp]);
+    return rows[0]?.payload || null;
+  }
+  return readFile().find((a) => a.fp === fp) || null;
 }
 
 // Vrátí aktivity (nejnovější první).
