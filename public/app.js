@@ -413,7 +413,15 @@ function esc(s) {
   // varuj, když se data neukládají trvale (na Railway = chybí Postgres)
   try {
     const h = await (await fetch('/healthz')).json();
-    if (h.db !== 'postgres') $('dbWarn').hidden = false;
+    if (h.db !== 'postgres') {
+      $('dbWarn').hidden = false;
+      const det = $('dbWarnDetail');
+      if (det) {
+        det.textContent = h.hasDbUrl === false
+          ? ' Appka nevidí DATABASE_URL — na Railway ji přidej k app službě přes Add Reference → Postgres → DATABASE_URL.'
+          : ' Chyba připojení: ' + (h.dbError || 'neznámá');
+      }
+    }
   } catch {}
 
   const list = await fetchActivities();

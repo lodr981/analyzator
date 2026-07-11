@@ -6,6 +6,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const DATABASE_URL = process.env.DATABASE_URL;
+const DATABASE_PUBLIC_URL = process.env.DATABASE_PUBLIC_URL; // Railway: veřejná adresa jako fallback
+const HAS_DB = Boolean(DATABASE_URL || DATABASE_PUBLIC_URL);
 const DATA_DIR = path.join(process.cwd(), 'data');
 const FILE = path.join(DATA_DIR, 'activities.json');
 
@@ -21,7 +23,8 @@ export function dbBackend() {
 export function dbInfo() {
   return {
     db: backend,
-    hasDbUrl: Boolean(DATABASE_URL),
+    hasDbUrl: HAS_DB,
+    hasPublicUrl: Boolean(DATABASE_PUBLIC_URL),
     dbSsl: process.env.DATABASE_SSL === 'true',
     dbError: lastError,
   };
@@ -63,22 +66,26 @@ async function connectPostgres() {
   const sslModes = process.env.DATABASE_SSL === 'true'
     ? [{ rejectUnauthorized: false }]
     : [false, { rejectUnauthorized: false }];
+  // zkus interní i veřejnou adresu (interní se občas nepřipojí)
+  const urls = [DATABASE_URL, DATABASE_PUBLIC_URL].filter(Boolean).filter((u, i, a) => a.indexOf(u) === i);
 
   let lastErr;
   for (let attempt = 1; attempt <= 4; attempt++) {
-    for (const ssl of sslModes) {
-      try {
-        const p = new pg.Pool({ connectionString: DATABASE_URL, ssl, connectionTimeoutMillis: 6000 });
-        await p.query('SELECT 1');
-        pool = p;
-        await ensureSchema();
-        backend = 'postgres';
-        console.log(`DB: postgres (ssl=${ssl ? 'ano' : 'ne'}, pokus ${attempt})`);
-        return;
-      } catch (err) {
-        lastErr = err;
-        try { await pool?.end(); } catch {}
-        pool = null;
+    for (const url of urls) {
+      for (const ssl of sslModes) {
+        try {
+          const p = new pg.Pool({ connectionString: url, ssl, connectionTimeoutMillis: 6000 });
+          await p.query('SELECT 1');
+          pool = p;
+          await ensureSchema();
+          backend = 'postgres';
+          console.log(`DB: postgres (ssl=${ssl ? 'ano' : 'ne'}, pokus ${attempt})`);
+          return;
+        } catch (err) {
+          lastErr = err;
+          try { await pool?.end(); } catch {}
+          pool = null;
+        }
       }
     }
     if (attempt < 4) await new Promise((r) => setTimeout(r, 1000 * attempt)); // narůstající prodleva
@@ -87,7 +94,7 @@ async function connectPostgres() {
 }
 
 export async function initDb() {
-  if (DATABASE_URL) {
+  if (HAS_DB) {
     try {
       await connectPostgres();
       return;
