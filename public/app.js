@@ -66,6 +66,8 @@ function render({ summary, coach, labels }) {
 
   // komentář
   $('headline').textContent = coach.headline;
+  const badge = $('aibadge');
+  if (badge) badge.style.display = coach.aiGenerated ? '' : 'none';
 
   // zóny
   const z = coach.zonesPct;

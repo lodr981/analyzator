@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 
 import { parseActivity } from './src/parse.js';
 import { evaluate, sportLabel, sportIcon, fmtDuration } from './src/coach.js';
+import { aiEnabled, generateCoachComment } from './src/aiCoach.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -23,6 +24,14 @@ app.post('/api/upload', upload.single('activity'), async (req, res) => {
   try {
     const summary = await parseActivity(req.file.buffer, req.file.originalname);
     const coach = evaluate(summary);
+
+    // Pokud je nastavený API klíč, nech text trenéra napsat Claude.
+    const aiText = await generateCoachComment(summary, coach);
+    if (aiText) {
+      coach.headline = aiText;
+      coach.aiGenerated = true;
+    }
+
     res.json({
       summary,
       coach,
@@ -38,7 +47,7 @@ app.post('/api/upload', upload.single('activity'), async (req, res) => {
   }
 });
 
-app.get('/healthz', (_req, res) => res.json({ ok: true }));
+app.get('/healthz', (_req, res) => res.json({ ok: true, ai: aiEnabled() }));
 
 app.listen(PORT, () => {
   console.log(`TEMPO běží na portu ${PORT}`);
