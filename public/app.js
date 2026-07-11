@@ -214,6 +214,9 @@ const chatMsg = $('chatMsg');
 let chatLoaded = false;
 
 chatSend.addEventListener('click', sendChatMessage);
+document.querySelectorAll('#chatChips .chip').forEach((c) =>
+  c.addEventListener('click', () => { chatText.value = c.dataset.q; sendChatMessage(); })
+);
 $('askCoach').addEventListener('click', () => {
   showScreen('chat');
   chatText.value = 'Rozeber mi můj poslední trénink a porovnej ho s předchozím.';
@@ -227,7 +230,9 @@ async function loadChat() {
     const res = await fetch('/api/chat');
     if (res.ok) {
       const state = await res.json();
-      $('chatAiOff').hidden = state.aiEnabled !== false;
+      const off = state.aiEnabled === false;
+      $('chatAiOff').hidden = !off;
+      $('chatChips').style.display = off ? 'none' : '';
       renderChat(state);
     }
   } catch {}

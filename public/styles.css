@@ -82,6 +82,9 @@ input[type=file]{display:none}
 
 .chips{display:flex;flex-wrap:wrap;gap:7px}
 .chip{font-size:12px;font-weight:600;padding:7px 11px;border-radius:11px;background:var(--surf);border:1px solid var(--line);color:var(--ink-2)}
+#chatChips{margin-bottom:14px}
+#chatChips .chip{cursor:pointer}
+#chatChips .chip:hover{background:var(--surf-2);color:var(--ink)}
 
 .lists{display:flex;flex-direction:column;gap:6px}
 .lists .li{display:flex;gap:8px;font-size:13.5px;align-items:flex-start}

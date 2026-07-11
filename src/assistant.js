@@ -30,6 +30,10 @@ DŮLEŽITÉ — máš nástroje a MUSÍŠ je použít HNED, jakmile Oliver uvede
 
 Rozlišuj jednotky: kg = váha (log_weight), cm = výška (log_height). Po zápisu to krátce lidsky potvrď (např. "Zapsáno, 165 cm 📏").
 
+Vyznáš se v cyklistice napříč disciplínami — silnice, XCO (MTB kros), cyklokros i enduro/gravity — a znáš současnou špičku. Umíš Olivera motivovat srovnáním s profíky ("i ti nejlepší makají na core").
+Když se ptá na AKTUÁLNÍ dění (kdo vyhrál, výsledky, závody, přestupy, novinky), POUŽIJ nástroj web_search a odpověz z čerstvých zdrojů — nikdy si výsledky nevymýšlej. Když si nejsi jistý aktuálností, radši si to vyhledej.
+A občas, když to sedne (třeba po dobrém tréninku nebo když je Oliver unavený), hoď krátký motivační střípek z aktuálního cyklo dění — kterákoliv disciplína — ať ho to nakopne.
+
 Oliver má i lidského trenéra (mluv o něm neutrálně jako "trenér", bez jména) — finální slovo má vždy on.
 Odpovídej stručně, 1–4 věty, klidně 1 emoji. Bez nadpisů a odrážek.`;
 
@@ -93,6 +97,8 @@ const TOOLS = [
       },
     },
   },
+  // Server tool: aktuální cyklo dění (výsledky, závody, novinky) — běží na straně Anthropicu.
+  { type: 'web_search_20260209', name: 'web_search', max_uses: 3 },
 ];
 
 async function runTool(name, input) {
@@ -142,30 +148,35 @@ export async function generateReply({ message, history = [], digest = '' }) {
   const system = `${SYSTEM}\n\n=== KONTEXT (dnešek a poslední data) ===\n${digest}`;
 
   try {
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 6; i++) {
       const resp = await client.messages.create(
         {
           model: 'claude-opus-4-8',
-          max_tokens: 800,
+          max_tokens: 1200,
           system,
           tools: TOOLS,
           output_config: { effort: 'medium' },
           messages,
         },
-        { timeout: 40000, maxRetries: 0 }
+        { timeout: 55000, maxRetries: 0 }
       );
 
-      if (resp.stop_reason === 'tool_use') {
+      // Vlastní (client-side) nástroje — vyřídíme a vrátíme výsledky.
+      const customUses = resp.content.filter((b) => b.type === 'tool_use');
+      if (customUses.length) {
         messages.push({ role: 'assistant', content: resp.content });
         const results = [];
-        for (const block of resp.content) {
-          if (block.type === 'tool_use') {
-            const out = await runTool(block.name, block.input);
-            results.push({ type: 'tool_result', tool_use_id: block.id, content: out });
-          }
+        for (const b of customUses) {
+          results.push({ type: 'tool_result', tool_use_id: b.id, content: await runTool(b.name, b.input) });
         }
         messages.push({ role: 'user', content: results });
-        continue; // ať model zformuluje finální odpověď
+        continue;
+      }
+
+      // Server tool (web_search) narazil na limit smyčky — pokračuj (bez user zprávy).
+      if (resp.stop_reason === 'pause_turn') {
+        messages.push({ role: 'assistant', content: resp.content });
+        continue;
       }
 
       const text = resp.content.filter((b) => b.type === 'text').map((b) => b.text).join('\n').trim();

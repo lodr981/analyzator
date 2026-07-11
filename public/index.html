@@ -14,7 +14,7 @@
   <meta name="apple-mobile-web-app-title" content="TEMPO" />
   <meta name="mobile-web-app-capable" content="yes" />
 
-  <link rel="stylesheet" href="/styles.css?v=20" />
+  <link rel="stylesheet" href="/styles.css?v=21" />
 </head>
 <body>
   <div class="app">
@@ -97,6 +97,14 @@
       <div class="hgreet">Parťák 🧠<small>Zeptej se na porovnání tréninků, napiš váhu, výšku, co jsi jedl…</small></div>
 
       <div id="chatAiOff" class="dbwarn" hidden>⚠️ Parťák zatím <b>neběží</b> — chybí AI klíč. Na Railway přidej proměnnou <b>ANTHROPIC_API_KEY</b>, jinak nejde chatovat ani zapisovat váhu/výšku/výživu.</div>
+
+      <div class="chips" id="chatChips">
+        <span class="chip" data-q="Porovnej můj dnešní trénink s minulým týdnem.">🆚 Dnešek vs minulý týden</span>
+        <span class="chip" data-q="Co je nového v cyklistice? Hoď mi něco na motivaci.">🚴 Novinky z cyklu</span>
+        <span class="chip" data-q="Kdo teď vede na velké silniční etapáku?">🏁 Kdo vede závod</span>
+        <span class="chip" data-q="Jak správně dělat plank a proč je pro kolo dobrý?">🤸 Jak na plank</span>
+      </div>
+
       <div id="chatMsgs"></div>
 
       <div class="planbox">
@@ -230,6 +238,6 @@
     </nav>
   </div>
 
-  <script src="/app.js?v=20"></script>
+  <script src="/app.js?v=21"></script>
 </body>
 </html>
