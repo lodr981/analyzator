@@ -34,10 +34,13 @@ Na Railway přidej `ANTHROPIC_API_KEY` v nastavení proměnných prostředí.
 2. ~~Historie aktivit~~ ✅ hotovo
 3. ~~Databáze na serveru~~ ✅ hotovo (Postgres na Railway, fallback na soubor)
 4. ~~Plán z chatu~~ ✅ hotovo (AI rozloží týden Po–Ne, řeší i změny/nemoc)
-5. **Forma & periodizace** — křivka zátěže, vyladění na závod
-6. **Denní rutina** — cviky a protažení s počty, auto-odškrtání z dat
-7. **Připomínky** — PWA push + e-mail (nenahráno / nesplněno / streak)
-8. **Přihlášení / okno pro trenéra & rodiče** (zatím bez ověření)
+5. ~~Forma & periodizace~~ ✅ hotovo (zátěž, kondice/únava/forma)
+6. ~~Parťák chat s kontextem~~ ✅ hotovo (porovnání tréninků, zápis váhy a
+   výživy z běžné řeči, doplnění „byl to závod")
+7. **Přehledy váhy a výživy** — grafy růstu (zápis už je, chybí zobrazení)
+8. **Denní rutina** — cviky a protažení s počty, auto-odškrtání z dat
+9. **Připomínky** — PWA push + e-mail (nenahráno / nesplněno / streak)
+10. **Přihlášení / okno pro trenéra & rodiče** (zatím bez ověření)
 
 ## Spuštění lokálně
 
@@ -75,6 +78,8 @@ src/parse.js       parser FIT/TCX/GPX → jednotný souhrn + zóny tepu
 src/coach.js       pravidlové hodnocení (rating, zóny, chipy) + fallback text
 src/aiCoach.js     AI komentář trenéra přes Claude API (claude-opus-4-8)
 src/aiPlan.js      plán z chatu — AI rozloží týden (structured outputs)
-src/db.js          úložiště aktivit + plánu (Postgres / souborový fallback)
-public/            frontend (nahrání, analýza, plán, historie, PWA)
+src/form.js        forma & periodizace — zátěž, kondice/únava/forma
+src/assistant.js   parťák chat — kontext nad vším + nástroje (váha, výživa, tag)
+src/db.js          úložiště: aktivity, plán, chat, váha, výživa (Postgres/soubor)
+public/            frontend (nahrání, parťák, plán, forma, historie, PWA)
 ```

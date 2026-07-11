@@ -46,6 +46,30 @@ async function initPostgres() {
         state      JSONB NOT NULL
       );
     `);
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS chat_state (
+        id         INT PRIMARY KEY,
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        state      JSONB NOT NULL
+      );
+    `);
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS measurements (
+        id         TEXT PRIMARY KEY,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        date       DATE,
+        weight_kg  REAL,
+        height_cm  REAL
+      );
+    `);
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS nutrition (
+        id         TEXT PRIMARY KEY,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        date       DATE,
+        text       TEXT
+      );
+    `);
   } catch (e) {
     console.error('DDL rozšíření selhalo (pokračuji na Postgresu):', e.message);
   }
@@ -171,4 +195,91 @@ export async function savePlan(state) {
     fs.writeFileSync(PLAN_FILE, JSON.stringify(state));
   }
   return state;
+}
+
+// ---- chat parťáka (jeden stav: messages) ----
+const CHAT_FILE = path.join(DATA_DIR, 'chat.json');
+
+export async function getChat() {
+  if (backend === 'postgres') {
+    const { rows } = await pool.query('SELECT state FROM chat_state WHERE id = 1');
+    return rows[0]?.state || null;
+  }
+  try { return JSON.parse(fs.readFileSync(CHAT_FILE, 'utf8')); } catch { return null; }
+}
+export async function saveChat(state) {
+  if (backend === 'postgres') {
+    await pool.query(
+      `INSERT INTO chat_state (id, state, updated_at) VALUES (1, $1, now())
+       ON CONFLICT (id) DO UPDATE SET state = $1, updated_at = now()`,
+      [state]
+    );
+  } else {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+    fs.writeFileSync(CHAT_FILE, JSON.stringify(state));
+  }
+  return state;
+}
+
+// ---- váha & míry ----
+const MEAS_FILE = path.join(DATA_DIR, 'measurements.json');
+const newId = () => Date.now() + '-' + Math.random().toString(36).slice(2, 7);
+const mFile = (f) => { try { return JSON.parse(fs.readFileSync(f, 'utf8')); } catch { return []; } };
+const mWrite = (f, list) => { fs.mkdirSync(DATA_DIR, { recursive: true }); fs.writeFileSync(f, JSON.stringify(list)); };
+
+export async function addMeasurement({ weight_kg = null, height_cm = null, date = null }) {
+  const rec = { id: newId(), date: validDate(date) || new Date().toISOString(), weight_kg, height_cm };
+  if (backend === 'postgres') {
+    await pool.query(
+      'INSERT INTO measurements (id, date, weight_kg, height_cm) VALUES ($1,$2,$3,$4)',
+      [rec.id, rec.date, weight_kg, height_cm]
+    );
+  } else {
+    const list = mFile(MEAS_FILE); list.unshift(rec); mWrite(MEAS_FILE, list.slice(0, 500));
+  }
+  return rec;
+}
+export async function listMeasurements() {
+  if (backend === 'postgres') {
+    const { rows } = await pool.query('SELECT id, date, weight_kg, height_cm FROM measurements ORDER BY date DESC NULLS LAST LIMIT 200');
+    return rows.map((r) => ({ ...r, date: r.date ? new Date(r.date).toISOString() : null }));
+  }
+  return mFile(MEAS_FILE);
+}
+
+// ---- výživa ----
+const NUTR_FILE = path.join(DATA_DIR, 'nutrition.json');
+
+export async function addNutrition({ text, date = null }) {
+  const rec = { id: newId(), date: validDate(date) || new Date().toISOString(), text: String(text || '') };
+  if (backend === 'postgres') {
+    await pool.query('INSERT INTO nutrition (id, date, text) VALUES ($1,$2,$3)', [rec.id, rec.date, rec.text]);
+  } else {
+    const list = mFile(NUTR_FILE); list.unshift(rec); mWrite(NUTR_FILE, list.slice(0, 500));
+  }
+  return rec;
+}
+export async function listNutrition() {
+  if (backend === 'postgres') {
+    const { rows } = await pool.query('SELECT id, date, text FROM nutrition ORDER BY date DESC NULLS LAST LIMIT 200');
+    return rows.map((r) => ({ ...r, date: r.date ? new Date(r.date).toISOString() : null }));
+  }
+  return mFile(NUTR_FILE);
+}
+
+// ---- úprava aktivity (tag „závod", poznámka) ----
+export async function updateActivity(id, patch) {
+  if (backend === 'postgres') {
+    const { rows } = await pool.query('SELECT payload FROM activities WHERE id = $1', [id]);
+    if (!rows[0]) return null;
+    const merged = { ...rows[0].payload, ...patch };
+    await pool.query('UPDATE activities SET payload = $2 WHERE id = $1', [id, merged]);
+    return merged;
+  }
+  const list = readFile();
+  const i = list.findIndex((a) => a.id === id);
+  if (i < 0) return null;
+  list[i] = { ...list[i], ...patch };
+  writeFile(list);
+  return list[i];
 }

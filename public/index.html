@@ -14,7 +14,7 @@
   <meta name="apple-mobile-web-app-title" content="TEMPO" />
   <meta name="mobile-web-app-capable" content="yes" />
 
-  <link rel="stylesheet" href="/styles.css?v=10" />
+  <link rel="stylesheet" href="/styles.css?v=11" />
 </head>
 <body>
   <div class="app">
@@ -78,8 +78,22 @@
 
         <div class="chips" id="chips" style="margin-bottom:14px"></div>
 
+        <button class="askbtn" id="askCoach">💬 Zeptat se parťáka na tenhle trénink</button>
         <button class="again" id="again">↺ Nahrát další aktivitu</button>
       </section>
+    </div>
+
+    <!-- ===== OBRAZOVKA: PARŤÁK CHAT ===== -->
+    <div id="screen-chat" hidden>
+      <div class="hgreet">Parťák 🧠<small>Zeptej se na porovnání tréninků, napiš váhu, co jsi jedl…</small></div>
+
+      <div id="chatMsgs"></div>
+
+      <div class="planbox">
+        <div class="msg" id="chatMsg"></div>
+        <textarea id="chatText" rows="2" placeholder="Napiš cokoliv — třeba: porovnej dnešek s minulým týdnem, dnes vážím 52 kg, k obědu těstoviny…"></textarea>
+        <button id="chatSend" class="planbtn">Poslat</button>
+      </div>
     </div>
 
     <!-- ===== OBRAZOVKA: PLÁN Z CHATU ===== -->
@@ -141,6 +155,10 @@
         <svg viewBox="0 0 24 24" fill="none"><path d="M12 16V4m0 0l-5 5m5-5l5 5M5 20h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
         Nahrát
       </button>
+      <button class="tab" data-screen="chat">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M4 5h16v11H9l-4 3v-3H4z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+        Parťák
+      </button>
       <button class="tab" data-screen="plan">
         <svg viewBox="0 0 24 24" fill="none"><path d="M8 7h11M8 12h11M8 17h7M4 7h.01M4 12h.01M4 17h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
         Plán
@@ -156,6 +174,6 @@
     </nav>
   </div>
 
-  <script src="/app.js?v=10"></script>
+  <script src="/app.js?v=11"></script>
 </body>
 </html>

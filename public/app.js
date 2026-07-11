@@ -64,6 +64,7 @@ document.querySelectorAll('.tab').forEach((t) =>
 );
 function showScreen(name) {
   $('screen-upload').hidden = name !== 'upload';
+  $('screen-chat').hidden = name !== 'chat';
   $('screen-plan').hidden = name !== 'plan';
   $('screen-form').hidden = name !== 'form';
   $('screen-history').hidden = name !== 'history';
@@ -71,6 +72,7 @@ function showScreen(name) {
   if (name === 'history') renderHistory();
   if (name === 'plan') loadPlan();
   if (name === 'form') renderForm();
+  if (name === 'chat') loadChat();
   window.scrollTo({ top: 0 });
 }
 
@@ -196,6 +198,60 @@ function historyRow(e) {
     <div class="meta"><b>${esc(e.labels?.sport || 'Aktivita')}</b><span>${fmtDate(s.startTime || e.ts)} · <span class="stars">${stars}</span></span></div>
     <div class="val"><b>${esc(val)}</b><span>${esc(sub)}</span></div>
   </button>`;
+}
+
+// ---------- parťák chat ----------
+const chatText = $('chatText');
+const chatSend = $('chatSend');
+const chatMsg = $('chatMsg');
+let chatLoaded = false;
+
+chatSend.addEventListener('click', sendChatMessage);
+$('askCoach').addEventListener('click', () => {
+  showScreen('chat');
+  chatText.value = 'Rozeber mi můj poslední trénink a porovnej ho s předchozím.';
+  chatText.focus();
+});
+
+async function loadChat() {
+  if (chatLoaded) return;
+  chatLoaded = true;
+  try {
+    const res = await fetch('/api/chat');
+    if (res.ok) renderChat(await res.json());
+  } catch {}
+}
+
+async function sendChatMessage() {
+  const message = chatText.value.trim();
+  if (!message) return;
+  chatSend.disabled = true;
+  chatMsg.textContent = '🧠 Přemýšlím…';
+  chatMsg.className = 'msg load';
+  try {
+    const res = await fetch('/api/chat/message', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message }),
+    });
+    const state = await res.json();
+    if (!res.ok) throw new Error(state.error || 'Něco se pokazilo.');
+    chatText.value = '';
+    chatMsg.className = 'msg';
+    renderChat(state);
+    setTimeout(() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }), 50);
+  } catch (err) {
+    chatMsg.textContent = '⚠️ ' + err.message;
+    chatMsg.className = 'msg err';
+  } finally {
+    chatSend.disabled = false;
+  }
+}
+
+function renderChat(state) {
+  $('chatMsgs').innerHTML = (state.messages || [])
+    .map((m) => `<div class="pmsg ${m.role === 'user' ? 'user' : 'ai'}">${esc(m.text)}</div>`)
+    .join('');
 }
 
 // ---------- forma & periodizace ----------
