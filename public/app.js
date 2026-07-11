@@ -65,10 +65,12 @@ document.querySelectorAll('.tab').forEach((t) =>
 function showScreen(name) {
   $('screen-upload').hidden = name !== 'upload';
   $('screen-plan').hidden = name !== 'plan';
+  $('screen-form').hidden = name !== 'form';
   $('screen-history').hidden = name !== 'history';
   document.querySelectorAll('.tab').forEach((t) => t.classList.toggle('on', t.dataset.screen === name));
   if (name === 'history') renderHistory();
   if (name === 'plan') loadPlan();
+  if (name === 'form') renderForm();
   window.scrollTo({ top: 0 });
 }
 
@@ -194,6 +196,37 @@ function historyRow(e) {
     <div class="meta"><b>${esc(e.labels?.sport || 'Aktivita')}</b><span>${fmtDate(s.startTime || e.ts)} · <span class="stars">${stars}</span></span></div>
     <div class="val"><b>${esc(val)}</b><span>${esc(sub)}</span></div>
   </button>`;
+}
+
+// ---------- forma & periodizace ----------
+async function renderForm() {
+  let data;
+  try {
+    const res = await fetch('/api/form');
+    data = await res.json();
+  } catch { data = { empty: true }; }
+
+  const empty = data.empty;
+  $('formEmpty').style.display = empty ? '' : 'none';
+  ['formLoadCard', 'formAdviceCard'].forEach((id) => { $(id).style.display = empty ? 'none' : ''; });
+  document.querySelectorAll('#screen-form .statrow').forEach((el) => { el.style.display = empty ? 'none' : ''; });
+  if (empty) return;
+
+  const max = Math.max(1, ...data.weeks.map((w) => w.load));
+  $('loadbars').innerHTML = data.weeks.map((w) => `
+    <div class="lb ${w.current ? 'cur' : ''}">
+      <div class="v">${w.load}</div>
+      <div class="col" style="height:${Math.round((w.load / max) * 100)}%"></div>
+      <div class="d">${esc(w.label)}</div>
+    </div>`).join('');
+
+  $('fitness').textContent = data.fitness;
+  $('fatigue').textContent = data.fatigue;
+  const fv = $('formVal');
+  fv.textContent = (data.form > 0 ? '+' : '') + data.form;
+  fv.style.color = data.form >= 0 ? 'var(--volt)' : 'var(--pink)';
+  $('fitTrend').textContent = data.trend === 'up' ? 'roste ↗' : data.trend === 'down' ? 'klesá ↘' : 'drží →';
+  $('formAdvice').textContent = data.advice;
 }
 
 // ---------- plán z chatu ----------

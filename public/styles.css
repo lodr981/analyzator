@@ -176,3 +176,11 @@ input[type=file]{display:none}
 .pmsg.user{align-self:flex-end;background:var(--surf);border:1px solid var(--line);border-radius:16px 16px 5px 16px;white-space:pre-wrap}
 .pmsg.ai{align-self:flex-start;background:var(--surf-2);border:1px solid var(--line);border-radius:16px 16px 16px 5px}
 .pmsg.ai::before{content:"🧠 ";}
+
+/* ===== forma: sloupce zátěže ===== */
+.loadbars{display:flex;align-items:flex-end;justify-content:space-between;gap:8px;height:110px;margin-top:10px}
+.loadbars .lb{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;height:100%;justify-content:flex-end}
+.loadbars .lb .col{width:100%;border-radius:7px 7px 3px 3px;background:var(--cyan);opacity:.85;min-height:3px}
+.loadbars .lb.cur .col{background:var(--pink);opacity:1}
+.loadbars .lb .v{font-size:10px;color:var(--ink-2);font-weight:700;font-variant-numeric:tabular-nums}
+.loadbars .lb .d{font-size:10px;color:var(--ink-3);font-weight:700}

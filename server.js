@@ -7,6 +7,7 @@ import { parseActivity } from './src/parse.js';
 import { evaluate, sportLabel, sportIcon, fmtDuration } from './src/coach.js';
 import { aiEnabled, generateCoachComment } from './src/aiCoach.js';
 import { generatePlan, planAiEnabled } from './src/aiPlan.js';
+import { computeForm } from './src/form.js';
 import { initDb, dbBackend, addActivity, listActivities, deleteActivity, findByFingerprint, getPlan, savePlan } from './src/db.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -134,6 +135,16 @@ app.post('/api/plan/message', async (req, res) => {
   } catch (err) {
     console.error('plan message error:', err.message);
     res.status(500).json({ error: 'Něco se pokazilo, zkus to znovu.' });
+  }
+});
+
+// ---- Forma & periodizace ----
+app.get('/api/form', async (_req, res) => {
+  try {
+    res.json(computeForm(await listActivities()));
+  } catch (err) {
+    console.error('form error:', err.message);
+    res.status(500).json({ error: 'Nepodařilo se spočítat formu.' });
   }
 });
 
