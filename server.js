@@ -152,6 +152,18 @@ app.get('/api/form', async (_req, res) => {
   }
 });
 
+// ---- Tělo: váha & výživa (zápis přes parťák-chat, tady jen čtení) ----
+app.get('/api/body', async (_req, res) => {
+  try {
+    const [meas, nutr] = await Promise.all([listMeasurements(), listNutrition()]);
+    const weights = meas.filter((m) => m.weight_kg != null).map((m) => ({ date: m.date, weight_kg: m.weight_kg }));
+    res.json({ weights, nutrition: nutr.slice(0, 12) });
+  } catch (err) {
+    console.error('body error:', err.message);
+    res.status(500).json({ error: 'Nepodařilo se načíst data těla.' });
+  }
+});
+
 // ---- Parťák chat (kontext nad vším) ----
 
 const shortDate = (iso) => {

@@ -14,7 +14,7 @@
   <meta name="apple-mobile-web-app-title" content="TEMPO" />
   <meta name="mobile-web-app-capable" content="yes" />
 
-  <link rel="stylesheet" href="/styles.css?v=12" />
+  <link rel="stylesheet" href="/styles.css?v=13" />
 </head>
 <body>
   <div class="app">
@@ -133,6 +133,24 @@
         </div>
       </div>
 
+      <div class="card" id="weightCard" style="display:none">
+        <div style="display:flex;justify-content:space-between;align-items:baseline">
+          <div class="lbl">Váha</div>
+          <div id="weightChange" style="font-size:12px;font-weight:800"></div>
+        </div>
+        <div style="display:flex;align-items:baseline;gap:6px;margin-top:4px">
+          <span id="weightLatest" style="font-size:30px;font-weight:800;letter-spacing:-.03em">–</span>
+          <span style="font-size:13px;font-weight:700;color:var(--ink-3)">kg</span>
+          <span id="weightDate" style="font-size:11px;color:var(--ink-3);margin-left:6px"></span>
+        </div>
+        <div class="loadbars" id="weightBars" style="height:70px;margin-top:12px"></div>
+      </div>
+
+      <div class="card" id="nutritionCard" style="display:none">
+        <div class="lbl" style="margin-bottom:8px">Výživa — poslední záznamy</div>
+        <div id="nutritionBody"></div>
+      </div>
+
       <div id="formEmpty" class="hint" style="margin-top:20px">Zatím málo dat. Nahraj pár tréninků a forma se začne počítat. 🚴</div>
     </div>
 
@@ -175,6 +193,6 @@
     </nav>
   </div>
 
-  <script src="/app.js?v=12"></script>
+  <script src="/app.js?v=13"></script>
 </body>
 </html>

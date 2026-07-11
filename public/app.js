@@ -123,12 +123,12 @@ function render(data) {
   }
 
   const lists = [];
-  coach.good.forEach((t) => lists.push(`<div class="li g"><span class="b">✓</span><span>${esc(t)}</span></div>`));
-  coach.improve.forEach((t) => lists.push(`<div class="li i"><span class="b">→</span><span>${esc(t)}</span></div>`));
+  (coach.good || []).forEach((t) => lists.push(`<div class="li g"><span class="b">✓</span><span>${esc(t)}</span></div>`));
+  (coach.improve || []).forEach((t) => lists.push(`<div class="li i"><span class="b">→</span><span>${esc(t)}</span></div>`));
   $('listsCard').style.display = lists.length ? '' : 'none';
   $('lists').innerHTML = lists.join('');
 
-  $('chips').innerHTML = coach.chips.map((c) => `<span class="chip">${c.icon} ${esc(c.text)}</span>`).join('');
+  $('chips').innerHTML = (coach.chips || []).map((c) => `<span class="chip">${c.icon} ${esc(c.text)}</span>`).join('');
 
   uploader.style.display = 'none';
   result.classList.add('show');
@@ -262,6 +262,8 @@ async function renderForm() {
     data = await res.json();
   } catch { data = { empty: true }; }
 
+  renderBody(); // váha/výživa nezávisle na tréninkové formě
+
   const empty = data.empty;
   $('formEmpty').style.display = empty ? '' : 'none';
   ['formLoadCard', 'formAdviceCard'].forEach((id) => { $(id).style.display = empty ? 'none' : ''; });
@@ -283,6 +285,50 @@ async function renderForm() {
   fv.style.color = data.form >= 0 ? 'var(--volt)' : 'var(--pink)';
   $('fitTrend').textContent = data.trend === 'up' ? 'roste ↗' : data.trend === 'down' ? 'klesá ↘' : 'drží →';
   $('formAdvice').textContent = data.advice;
+}
+
+// váha & výživa (zápis přes parťáka; tady jen přehled)
+async function renderBody() {
+  let body;
+  try { body = await (await fetch('/api/body')).json(); } catch { body = { weights: [], nutrition: [] }; }
+
+  const w = (body.weights || []); // nejnovější první
+  const wc = $('weightCard');
+  if (w.length) {
+    wc.style.display = '';
+    $('weightLatest').textContent = w[0].weight_kg;
+    $('weightDate').textContent = fmtDate(w[0].date);
+    const oldest = w[w.length - 1].weight_kg;
+    const diff = +(w[0].weight_kg - oldest).toFixed(1);
+    const ch = $('weightChange');
+    if (w.length > 1 && diff !== 0) {
+      ch.textContent = (diff > 0 ? '▲ +' : '▼ ') + diff + ' kg';
+      ch.style.color = diff > 0 ? 'var(--volt)' : 'var(--cyan)';
+    } else ch.textContent = '';
+
+    const chrono = w.slice(0, 8).reverse();
+    const vals = chrono.map((x) => x.weight_kg);
+    const min = Math.min(...vals), max = Math.max(...vals);
+    $('weightBars').innerHTML = chrono.map((x, i) => {
+      const h = max === min ? 60 : Math.round(20 + ((x.weight_kg - min) / (max - min)) * 80);
+      const cur = i === chrono.length - 1 ? 'cur' : '';
+      return `<div class="lb ${cur}"><div class="v">${x.weight_kg}</div><div class="col" style="height:${h}%"></div><div class="d">${fmtDay(x.date)}</div></div>`;
+    }).join('');
+  } else wc.style.display = 'none';
+
+  const n = (body.nutrition || []);
+  const nc = $('nutritionCard');
+  if (n.length) {
+    nc.style.display = '';
+    $('nutritionBody').innerHTML = n.map((e) =>
+      `<div style="display:flex;gap:9px;font-size:13px;padding:5px 0;border-bottom:1px solid var(--line)"><span style="color:var(--ink-3);font-weight:700;flex:0 0 auto;min-width:42px">${fmtDay(e.date)}</span><span>${esc(e.text)}</span></div>`
+    ).join('');
+  } else nc.style.display = 'none';
+}
+
+function fmtDay(iso) {
+  const d = new Date(iso);
+  return isNaN(d) ? '' : `${d.getDate()}.${d.getMonth() + 1}.`;
 }
 
 // ---------- plán z chatu ----------
