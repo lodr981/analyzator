@@ -11,9 +11,20 @@ const FILE = path.join(DATA_DIR, 'activities.json');
 
 let pool = null;
 let backend = 'file';
+let lastError = null;
 
 export function dbBackend() {
   return backend;
+}
+
+// Diagnostika pro /healthz — proč nejede Postgres.
+export function dbInfo() {
+  return {
+    db: backend,
+    hasDbUrl: Boolean(DATABASE_URL),
+    dbSsl: process.env.DATABASE_SSL === 'true',
+    dbError: lastError,
+  };
 }
 
 // Vytvoří/aktualizuje schéma. Kritická je tabulka activities; zbytek nesmí
@@ -54,10 +65,10 @@ async function connectPostgres() {
     : [false, { rejectUnauthorized: false }];
 
   let lastErr;
-  for (let attempt = 1; attempt <= 6; attempt++) {
+  for (let attempt = 1; attempt <= 4; attempt++) {
     for (const ssl of sslModes) {
       try {
-        const p = new pg.Pool({ connectionString: DATABASE_URL, ssl, connectionTimeoutMillis: 8000 });
+        const p = new pg.Pool({ connectionString: DATABASE_URL, ssl, connectionTimeoutMillis: 6000 });
         await p.query('SELECT 1');
         pool = p;
         await ensureSchema();
@@ -70,7 +81,7 @@ async function connectPostgres() {
         pool = null;
       }
     }
-    await new Promise((r) => setTimeout(r, 1500 * attempt)); // narůstající prodleva
+    if (attempt < 4) await new Promise((r) => setTimeout(r, 1000 * attempt)); // narůstající prodleva
   }
   throw lastErr;
 }
@@ -81,8 +92,11 @@ export async function initDb() {
       await connectPostgres();
       return;
     } catch (err) {
-      console.error('Postgres se nepřipojil ani po opakování, používám soubor:', err?.message);
+      lastError = err?.message || 'neznámá chyba';
+      console.error('Postgres se nepřipojil ani po opakování, používám soubor:', lastError);
     }
+  } else {
+    lastError = 'DATABASE_URL není nastavená';
   }
   fs.mkdirSync(DATA_DIR, { recursive: true });
   if (!fs.existsSync(FILE)) fs.writeFileSync(FILE, '[]');

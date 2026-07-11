@@ -10,7 +10,7 @@ import { generatePlan, planAiEnabled } from './src/aiPlan.js';
 import { computeForm } from './src/form.js';
 import { generateReply, assistantEnabled } from './src/assistant.js';
 import {
-  initDb, dbBackend, addActivity, listActivities, deleteActivity, findByFingerprint,
+  initDb, dbBackend, dbInfo, addActivity, listActivities, deleteActivity, findByFingerprint,
   getPlan, savePlan, getChat, saveChat, listMeasurements, listNutrition,
 } from './src/db.js';
 
@@ -251,7 +251,7 @@ app.post('/api/chat/message', async (req, res) => {
   }
 });
 
-app.get('/healthz', (_req, res) => res.json({ ok: true, ai: aiEnabled(), db: dbBackend() }));
+app.get('/healthz', (_req, res) => res.json({ ok: true, ai: aiEnabled(), ...dbInfo() }));
 
 initDb().finally(() => {
   app.listen(PORT, () => {
