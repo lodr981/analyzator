@@ -1,0 +1,20 @@
+{
+  "name": "tempo",
+  "version": "0.1.0",
+  "description": "TEMPO — tréninkový parťák pro mladého cyklistu. Nahraj aktivitu z Garminu a appka ji vyhodnotí.",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "fast-xml-parser": "^4.4.1",
+    "fit-file-parser": "^1.20.0",
+    "multer": "^1.4.5-lts.1"
+  }
+}
