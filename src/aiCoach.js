@@ -47,18 +47,22 @@ function buildContext(summary, evalResult) {
 export async function generateCoachComment(summary, evalResult) {
   if (!client) return null;
   try {
-    const response = await client.messages.create({
-      model: 'claude-opus-4-8',
-      max_tokens: 400,
-      system: SYSTEM,
-      output_config: { effort: 'low' },
-      messages: [
-        {
-          role: 'user',
-          content: `Tady je Oliverův dnešní trénink. Napiš mu komentář trenéra.\n\n${buildContext(summary, evalResult)}`,
-        },
-      ],
-    });
+    const response = await client.messages.create(
+      {
+        model: 'claude-opus-4-8',
+        max_tokens: 400,
+        system: SYSTEM,
+        output_config: { effort: 'low' },
+        messages: [
+          {
+            role: 'user',
+            content: `Tady je Oliverův dnešní trénink. Napiš mu komentář trenéra.\n\n${buildContext(summary, evalResult)}`,
+          },
+        ],
+      },
+      // Ať upload nikdy nevisí: max 12 s, žádné opakování → jinak fallback na pravidlový text.
+      { timeout: 12000, maxRetries: 0 }
+    );
     const text = response.content.find((b) => b.type === 'text')?.text?.trim();
     return text || null;
   } catch (err) {
