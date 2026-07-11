@@ -363,7 +363,7 @@ export async function addMeasurement({ weight_kg = null, height_cm = null, date 
 }
 export async function listMeasurements() {
   if (backend === 'postgres') {
-    const { rows } = await pool.query('SELECT id, date, weight_kg, height_cm FROM measurements ORDER BY date DESC NULLS LAST LIMIT 200');
+    const { rows } = await pool.query('SELECT id, date, weight_kg, height_cm FROM measurements ORDER BY date DESC NULLS LAST, created_at DESC LIMIT 200');
     return rows.map((r) => ({ ...r, date: r.date ? new Date(r.date).toISOString() : null }));
   }
   return mFile(MEAS_FILE);

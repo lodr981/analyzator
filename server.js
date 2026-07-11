@@ -169,7 +169,8 @@ app.get('/api/body', async (_req, res) => {
   try {
     const [meas, nutr] = await Promise.all([listMeasurements(), listNutrition()]);
     const weights = meas.filter((m) => m.weight_kg != null).map((m) => ({ date: m.date, weight_kg: m.weight_kg }));
-    res.json({ weights, nutrition: nutr.slice(0, 12) });
+    const heights = meas.filter((m) => m.height_cm != null).map((m) => ({ date: m.date, height_cm: m.height_cm }));
+    res.json({ weights, heights, nutrition: nutr.slice(0, 12) });
   } catch (err) {
     console.error('body error:', err.message);
     res.status(500).json({ error: 'Nepodařilo se načíst data těla.' });
@@ -226,6 +227,8 @@ async function buildDigest() {
   if (meas.length) {
     const w = meas.filter((m) => m.weight_kg != null).slice(0, 4);
     if (w.length) lines.push('\nVáha: ' + w.map((m) => `${m.weight_kg} kg (${shortDate(m.date)})`).join(', '));
+    const h = meas.filter((m) => m.height_cm != null).slice(0, 2);
+    if (h.length) lines.push('Výška: ' + h.map((m) => `${m.height_cm} cm (${shortDate(m.date)})`).join(', '));
   }
   if (nutr.length) {
     lines.push('\nVýživa (poslední):');

@@ -22,8 +22,9 @@ Když něco v kontextu chybí, řekni to a případně se doptej — nevymýšle
 Umíš taky VYSVĚTLIT cviky z denní rutiny — jak je správně dělat a proč (máš je v kontextu i s návodem a zdůvodněním). Když se Oliver zeptá "jak dělat plank" nebo "proč mrtvý brouk", srozumitelně mu to popiš.
 
 Máš nástroje. Používej je, když Oliver píše běžnou řečí (žádné formuláře):
-- log_weight: když napíše kolik váží ("dnes 52 kilo").
-- log_nutrition: když popíše co jedl/pil ("k obědu těstoviny s kuřecím").
+- log_weight: když napíše kolik VÁŽÍ (kilogramy, "dnes 52 kilo").
+- log_height: když napíše kolik MĚŘÍ (centimetry, "měřím 165", "vyrostl jsem na 166 cm").
+- log_nutrition: když popíše co jedl/pil ("k obědu těstoviny s kuřecím", "snídaně ovesná kaše").
 - tag_activity: když upřesní k aktivitě, že to byl závod (ne trénink), nebo přidá poznámku. activity_id vezmi z kontextu.
 - check_routine: když napíše, že cvičil ("odcvičil jsem", "hotová rutina"). Bez upřesnění odškrtni celou dnešní rutinu; když zmíní jen část (třeba jen core), odškrtni jen ta id.
 Po zápisu to krátce potvrď.
@@ -42,6 +43,18 @@ const TOOLS = [
         date: { type: 'string', description: 'ISO datum (YYYY-MM-DD); vynech pro dnešek.' },
       },
       required: ['weight_kg'],
+    },
+  },
+  {
+    name: 'log_height',
+    description: 'Zapiš Oliverovu tělesnou výšku v centimetrech. Použij, když napíše, kolik měří.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        height_cm: { type: 'number', description: 'Výška v cm.' },
+        date: { type: 'string', description: 'ISO datum; vynech pro dnešek.' },
+      },
+      required: ['height_cm'],
     },
   },
   {
@@ -86,6 +99,10 @@ async function runTool(name, input) {
     if (name === 'log_weight') {
       const rec = await addMeasurement({ weight_kg: input.weight_kg, date: input.date });
       return `Zapsáno: ${rec.weight_kg} kg.`;
+    }
+    if (name === 'log_height') {
+      const rec = await addMeasurement({ height_cm: input.height_cm, date: input.date });
+      return `Zapsáno: ${rec.height_cm} cm.`;
     }
     if (name === 'log_nutrition') {
       await addNutrition({ text: input.text, date: input.date });
