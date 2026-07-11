@@ -14,7 +14,7 @@
   <meta name="apple-mobile-web-app-title" content="TEMPO" />
   <meta name="mobile-web-app-capable" content="yes" />
 
-  <link rel="stylesheet" href="/styles.css?v=17" />
+  <link rel="stylesheet" href="/styles.css?v=18" />
 </head>
 <body>
   <div class="app">
@@ -41,6 +41,14 @@
         <input type="file" id="file" />
         <div class="hint">Stáhni aktivitu z Garmin Connectu (Export → TCX) a vyber ji tady ze <b>Souborů</b>.</div>
         <div class="msg" id="msg"></div>
+
+        <div class="card" id="pushCard" style="margin-top:22px">
+          <div class="lbl" style="margin-bottom:6px">🔔 Připomínky</div>
+          <p style="font-size:13px;color:var(--ink-2);margin:0 0 12px;line-height:1.5">Pošleme ti upozornění do telefonu, když si zapomeneš nahrát trénink nebo udělat rutinu.</p>
+          <button id="pushEnable" class="planbtn">Zapnout připomínky</button>
+          <button id="pushTest" class="again" style="display:none;margin-top:8px">Poslat testovací</button>
+          <div id="pushStatus" class="hint" style="margin-top:10px;text-align:left"></div>
+        </div>
       </section>
 
       <section class="result" id="result">
@@ -218,6 +226,6 @@
     </nav>
   </div>
 
-  <script src="/app.js?v=17"></script>
+  <script src="/app.js?v=18"></script>
 </body>
 </html>

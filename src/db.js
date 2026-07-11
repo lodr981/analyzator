@@ -53,6 +53,8 @@ async function ensureSchema() {
     await pool.query(`CREATE TABLE IF NOT EXISTS plan_state (id INT PRIMARY KEY, updated_at TIMESTAMPTZ NOT NULL DEFAULT now(), state JSONB NOT NULL);`);
     await pool.query(`CREATE TABLE IF NOT EXISTS chat_state (id INT PRIMARY KEY, updated_at TIMESTAMPTZ NOT NULL DEFAULT now(), state JSONB NOT NULL);`);
     await pool.query(`CREATE TABLE IF NOT EXISTS routine_state (id INT PRIMARY KEY, updated_at TIMESTAMPTZ NOT NULL DEFAULT now(), state JSONB NOT NULL);`);
+    await pool.query(`CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value JSONB NOT NULL);`);
+    await pool.query(`CREATE TABLE IF NOT EXISTS push_subs (endpoint TEXT PRIMARY KEY, sub JSONB NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT now());`);
     await pool.query(`CREATE TABLE IF NOT EXISTS measurements (id TEXT PRIMARY KEY, created_at TIMESTAMPTZ NOT NULL DEFAULT now(), date DATE, weight_kg REAL, height_cm REAL);`);
     await pool.query(`CREATE TABLE IF NOT EXISTS nutrition (id TEXT PRIMARY KEY, created_at TIMESTAMPTZ NOT NULL DEFAULT now(), date DATE, text TEXT);`);
   } catch (e) {
@@ -245,6 +247,65 @@ export async function saveChat(state) {
     fs.writeFileSync(CHAT_FILE, JSON.stringify(state));
   }
   return state;
+}
+
+// ---- nastavení (kv: VAPID klíče apod.) ----
+const SETTINGS_FILE = path.join(DATA_DIR, 'settings.json');
+
+export async function getSetting(key) {
+  if (backend === 'postgres') {
+    const { rows } = await pool.query('SELECT value FROM settings WHERE key = $1', [key]);
+    return rows[0]?.value ?? null;
+  }
+  try { return JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8'))[key] ?? null; } catch { return null; }
+}
+export async function setSetting(key, value) {
+  if (backend === 'postgres') {
+    await pool.query(
+      `INSERT INTO settings (key, value) VALUES ($1, $2)
+       ON CONFLICT (key) DO UPDATE SET value = $2`,
+      [key, value]
+    );
+  } else {
+    let all = {};
+    try { all = JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8')); } catch {}
+    all[key] = value;
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+    fs.writeFileSync(SETTINGS_FILE, JSON.stringify(all));
+  }
+  return value;
+}
+
+// ---- push odběry ----
+const SUBS_FILE = path.join(DATA_DIR, 'push_subs.json');
+
+export async function addPushSub(sub) {
+  if (!sub?.endpoint) return;
+  if (backend === 'postgres') {
+    await pool.query(
+      `INSERT INTO push_subs (endpoint, sub) VALUES ($1, $2)
+       ON CONFLICT (endpoint) DO UPDATE SET sub = $2`,
+      [sub.endpoint, sub]
+    );
+  } else {
+    const list = mFile(SUBS_FILE).filter((s) => s.endpoint !== sub.endpoint);
+    list.push(sub);
+    mWrite(SUBS_FILE, list);
+  }
+}
+export async function listPushSubs() {
+  if (backend === 'postgres') {
+    const { rows } = await pool.query('SELECT sub FROM push_subs');
+    return rows.map((r) => r.sub);
+  }
+  return mFile(SUBS_FILE);
+}
+export async function removePushSub(endpoint) {
+  if (backend === 'postgres') {
+    await pool.query('DELETE FROM push_subs WHERE endpoint = $1', [endpoint]);
+  } else {
+    mWrite(SUBS_FILE, mFile(SUBS_FILE).filter((s) => s.endpoint !== endpoint));
+  }
 }
 
 // ---- denní rutina (stav odškrtání po dnech: { "YYYY-MM-DD": ["exId", ...] }) ----

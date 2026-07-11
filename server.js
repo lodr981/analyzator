@@ -10,9 +10,12 @@ import { generatePlan, planAiEnabled } from './src/aiPlan.js';
 import { computeForm } from './src/form.js';
 import { generateReply, assistantEnabled } from './src/assistant.js';
 import { ROUTINE, routineDigest } from './src/routine.js';
+import { initPush, pushReady, vapidPublicKey, sendToAll } from './src/push.js';
+import { dailyReminderCheck } from './src/reminders.js';
 import {
   initDb, dbBackend, dbInfo, addActivity, listActivities, deleteActivity, findByFingerprint,
   getPlan, savePlan, getChat, saveChat, listMeasurements, listNutrition, getRoutine, saveRoutine,
+  addPushSub,
 } from './src/db.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -296,9 +299,51 @@ app.post('/api/routine/toggle', async (req, res) => {
   }
 });
 
-app.get('/healthz', (_req, res) => res.json({ ok: true, ai: aiEnabled(), ...dbInfo() }));
+// ---- Připomínky (Web Push) ----
+app.get('/api/push/key', (_req, res) => res.json({ key: vapidPublicKey(), enabled: pushReady() }));
 
-initDb().finally(() => {
+app.post('/api/push/subscribe', async (req, res) => {
+  try {
+    await addPushSub(req.body?.subscription);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('push subscribe error:', err.message);
+    res.status(500).json({ error: 'Nepodařilo se zapnout připomínky.' });
+  }
+});
+
+app.post('/api/push/test', async (_req, res) => {
+  try {
+    const r = await sendToAll({ title: 'TEMPO', body: 'Test připomínky — funguje! 🚴💪' });
+    res.json(r);
+  } catch (err) {
+    console.error('push test error:', err.message);
+    res.status(500).json({ error: 'Test se nepodařil.' });
+  }
+});
+
+app.get('/healthz', (_req, res) => res.json({ ok: true, ai: aiEnabled(), push: pushReady(), ...dbInfo() }));
+
+// Denní připomínka: jednou denně v REMIND_HOUR (UTC) zkontroluj a případně pošli.
+const REMIND_HOUR = Number(process.env.PUSH_HOUR ?? 18); // ~19–20 h v ČR
+let lastRemind = null;
+setInterval(async () => {
+  if (!pushReady()) return;
+  const now = new Date();
+  const t = now.toISOString().slice(0, 10);
+  if (now.getUTCHours() === REMIND_HOUR && lastRemind !== t) {
+    lastRemind = t;
+    try {
+      const r = await dailyReminderCheck();
+      console.log('Denní připomínka:', JSON.stringify(r));
+    } catch (e) {
+      console.error('reminder error:', e.message);
+    }
+  }
+}, 15 * 60 * 1000);
+
+initDb().finally(async () => {
+  await initPush();
   app.listen(PORT, () => {
     console.log(`TEMPO běží na portu ${PORT}`);
   });

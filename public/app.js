@@ -493,8 +493,81 @@ function esc(s) {
   return String(s).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
 }
 
+// ---------- připomínky (web push) ----------
+const pushEnable = $('pushEnable');
+const pushTest = $('pushTest');
+const pushStatus = $('pushStatus');
+
+function urlBase64ToUint8Array(base64) {
+  const padding = '='.repeat((4 - (base64.length % 4)) % 4);
+  const b64 = (base64 + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const raw = atob(b64);
+  const arr = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i++) arr[i] = raw.charCodeAt(i);
+  return arr;
+}
+
+async function initPush() {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+    pushStatus.textContent = 'Push notifikace tenhle prohlížeč nepodporuje. Na iPhonu přidej appku na plochu.';
+    pushEnable.disabled = true;
+    return;
+  }
+  try {
+    await navigator.serviceWorker.register('/sw.js');
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.getSubscription();
+    if (sub) showPushOn();
+  } catch (e) { /* ignore */ }
+}
+
+function showPushOn() {
+  pushEnable.textContent = '✅ Připomínky zapnuté';
+  pushEnable.disabled = true;
+  pushTest.style.display = '';
+  pushStatus.textContent = 'Budeme ti připomínat, když si zapomeneš nahrát trénink nebo udělat rutinu.';
+}
+
+pushEnable.addEventListener('click', async () => {
+  pushEnable.disabled = true;
+  pushStatus.textContent = 'Zapínám…';
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    const perm = await Notification.requestPermission();
+    if (perm !== 'granted') {
+      pushStatus.textContent = 'Bez povolení notifikací to nepůjde. Povol je v nastavení.';
+      pushEnable.disabled = false;
+      return;
+    }
+    const { key } = await (await fetch('/api/push/key')).json();
+    if (!key) throw new Error('Server nemá klíč.');
+    const sub = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(key),
+    });
+    await fetch('/api/push/subscribe', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ subscription: sub }),
+    });
+    showPushOn();
+  } catch (err) {
+    pushStatus.textContent = '⚠️ Nepodařilo se zapnout: ' + err.message + ' (na iPhonu musí být appka na ploše).';
+    pushEnable.disabled = false;
+  }
+});
+
+pushTest.addEventListener('click', async () => {
+  pushStatus.textContent = 'Posílám test…';
+  try {
+    const r = await (await fetch('/api/push/test', { method: 'POST' })).json();
+    pushStatus.textContent = r.sent ? 'Test odeslán 🚀 (za chvíli přijde notifikace)' : 'Žádný aktivní odběr.';
+  } catch { pushStatus.textContent = 'Test se nepodařil.'; }
+});
+
 // ---------- start ----------
 (async function init() {
+  initPush();
   // varuj, když se data neukládají trvale (na Railway = chybí Postgres)
   try {
     const h = await (await fetch('/healthz')).json();

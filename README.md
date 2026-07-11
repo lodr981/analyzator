@@ -39,7 +39,7 @@ Na Railway přidej `ANTHROPIC_API_KEY` v nastavení proměnných prostředí.
    výživy z běžné řeči, doplnění „byl to závod")
 7. ~~Přehledy váhy a výživy~~ ✅ hotovo (na obrazovce Forma — váha s trendem + výživa)
 8. ~~Denní rutina~~ ✅ hotovo (cviky s počty, odškrtávání, denní pokrok)
-9. **Připomínky** — PWA push + e-mail (nenahráno / nesplněno / streak)
+9. ~~Připomínky~~ ✅ hotovo (Web Push přes PWA — denně, když nic nenahráno/neodcvičeno)
 10. **Přihlášení / okno pro trenéra & rodiče** (zatím bez ověření)
 
 ## Spuštění lokálně
