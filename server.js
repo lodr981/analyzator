@@ -6,7 +6,8 @@ import { fileURLToPath } from 'node:url';
 import { parseActivity } from './src/parse.js';
 import { evaluate, sportLabel, sportIcon, fmtDuration } from './src/coach.js';
 import { aiEnabled, generateCoachComment } from './src/aiCoach.js';
-import { initDb, dbBackend, addActivity, listActivities, deleteActivity } from './src/db.js';
+import { generatePlan, planAiEnabled } from './src/aiPlan.js';
+import { initDb, dbBackend, addActivity, listActivities, deleteActivity, getPlan, savePlan } from './src/db.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -80,6 +81,44 @@ app.delete('/api/activities/:id', async (req, res) => {
   } catch (err) {
     console.error('DB delete error:', err.message);
     res.status(500).json({ error: 'Nepodařilo se smazat.' });
+  }
+});
+
+// ---- Plán z chatu ----
+
+// Aktuální plán + historie chatu.
+app.get('/api/plan', async (_req, res) => {
+  try {
+    const state = (await getPlan()) || { plan: null, messages: [] };
+    res.json({ ...state, aiEnabled: planAiEnabled() });
+  } catch (err) {
+    console.error('plan get error:', err.message);
+    res.status(500).json({ error: 'Nepodařilo se načíst plán.' });
+  }
+});
+
+// Nová zpráva (vložený text od trenéra nebo změna) → AI přeskládá týden.
+app.post('/api/plan/message', async (req, res) => {
+  const message = (req.body?.message || '').trim();
+  if (!message) return res.status(400).json({ error: 'Prázdná zpráva.' });
+  try {
+    const state = (await getPlan()) || { plan: null, messages: [] };
+    state.messages.push({ role: 'user', text: message, ts: Date.now() });
+
+    const result = await generatePlan({ message, currentPlan: state.plan });
+
+    if (result.error) {
+      state.messages.push({ role: 'ai', text: result.error, ts: Date.now() });
+    } else {
+      state.plan = { weekLabel: result.weekLabel, days: result.days };
+      state.messages.push({ role: 'ai', text: result.reply, ts: Date.now() });
+    }
+    state.messages = state.messages.slice(-40); // strop na velikost chatu
+    await savePlan(state);
+    res.json({ ...state, aiEnabled: planAiEnabled() });
+  } catch (err) {
+    console.error('plan message error:', err.message);
+    res.status(500).json({ error: 'Něco se pokazilo, zkus to znovu.' });
   }
 });
 

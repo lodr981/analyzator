@@ -34,6 +34,13 @@ async function initPostgres() {
       payload       JSONB NOT NULL
     );
   `);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS plan_state (
+      id         INT PRIMARY KEY,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      state      JSONB NOT NULL
+    );
+  `);
   backend = 'postgres';
 }
 
@@ -113,4 +120,29 @@ export async function deleteActivity(id) {
   } else {
     writeFile(readFile().filter((a) => a.id !== id));
   }
+}
+
+// ---- plán týdne (jeden aktuální stav: plan + chat) ----
+const PLAN_FILE = path.join(DATA_DIR, 'plan.json');
+
+export async function getPlan() {
+  if (backend === 'postgres') {
+    const { rows } = await pool.query('SELECT state FROM plan_state WHERE id = 1');
+    return rows[0]?.state || null;
+  }
+  try { return JSON.parse(fs.readFileSync(PLAN_FILE, 'utf8')); } catch { return null; }
+}
+
+export async function savePlan(state) {
+  if (backend === 'postgres') {
+    await pool.query(
+      `INSERT INTO plan_state (id, state, updated_at) VALUES (1, $1, now())
+       ON CONFLICT (id) DO UPDATE SET state = $1, updated_at = now()`,
+      [state]
+    );
+  } else {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+    fs.writeFileSync(PLAN_FILE, JSON.stringify(state));
+  }
+  return state;
 }

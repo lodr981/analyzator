@@ -64,9 +64,11 @@ document.querySelectorAll('.tab').forEach((t) =>
 );
 function showScreen(name) {
   $('screen-upload').hidden = name !== 'upload';
+  $('screen-plan').hidden = name !== 'plan';
   $('screen-history').hidden = name !== 'history';
   document.querySelectorAll('.tab').forEach((t) => t.classList.toggle('on', t.dataset.screen === name));
   if (name === 'history') renderHistory();
+  if (name === 'plan') loadPlan();
   window.scrollTo({ top: 0 });
 }
 
@@ -190,6 +192,67 @@ function historyRow(e) {
     <div class="meta"><b>${esc(e.labels?.sport || 'Aktivita')}</b><span>${fmtDate(s.startTime || e.ts)} · <span class="stars">${stars}</span></span></div>
     <div class="val"><b>${esc(val)}</b><span>${esc(sub)}</span></div>
   </button>`;
+}
+
+// ---------- plán z chatu ----------
+const planText = $('planText');
+const planSend = $('planSend');
+const planMsg = $('planMsg');
+let planLoaded = false;
+
+planSend.addEventListener('click', sendPlanMessage);
+
+async function loadPlan() {
+  if (planLoaded) return;
+  planLoaded = true;
+  try {
+    const res = await fetch('/api/plan');
+    if (res.ok) renderPlan(await res.json());
+  } catch {}
+}
+
+async function sendPlanMessage() {
+  const message = planText.value.trim();
+  if (!message) return;
+  planSend.disabled = true;
+  planMsg.textContent = '🧠 Rozkládám týden…';
+  planMsg.className = 'msg load';
+  try {
+    const res = await fetch('/api/plan/message', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message }),
+    });
+    const state = await res.json();
+    if (!res.ok) throw new Error(state.error || 'Něco se pokazilo.');
+    planText.value = '';
+    planMsg.className = 'msg';
+    renderPlan(state);
+  } catch (err) {
+    planMsg.textContent = '⚠️ ' + err.message;
+    planMsg.className = 'msg err';
+  } finally {
+    planSend.disabled = false;
+  }
+}
+
+function renderPlan(state) {
+  const week = $('planWeek');
+  if (state.plan && state.plan.days?.length) {
+    const label = state.plan.weekLabel ? `<div class="weeklabel">${esc(state.plan.weekLabel)}</div>` : '';
+    week.innerHTML = label + state.plan.days.map((d) => `
+      <div class="pday k-${esc(d.kind)}">
+        <div class="dow">${esc(d.day)}</div>
+        <div class="body"><div class="ttl">${esc(d.title)}</div><div class="det">${esc(d.detail)}</div></div>
+      </div>`).join('');
+  } else {
+    week.innerHTML = '';
+  }
+
+  const chat = $('planChat');
+  chat.innerHTML = (state.messages || [])
+    .map((m) => `<div class="pmsg ${m.role === 'user' ? 'user' : 'ai'}">${esc(m.text)}</div>`)
+    .join('');
 }
 
 function fmtDate(iso) {

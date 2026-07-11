@@ -131,3 +131,41 @@ input[type=file]{display:none}
 .hrow .val b{font-size:15px;font-weight:800;font-variant-numeric:tabular-nums;display:block}
 .hrow .val span{font-size:10px;color:var(--ink-3)}
 .stars{color:var(--volt);font-size:11px;letter-spacing:1px}
+
+/* ===== plán z chatu ===== */
+.planbox{margin-bottom:18px}
+#planText{
+  width:100%;box-sizing:border-box;resize:vertical;
+  background:var(--surf);border:1px solid var(--line);border-radius:16px;
+  color:var(--ink);font-family:inherit;font-size:14px;padding:13px 14px;line-height:1.5;
+}
+#planText::placeholder{color:var(--ink-3)}
+.planbtn{
+  width:100%;margin-top:10px;padding:14px;border:none;border-radius:16px;
+  background:var(--grad);color:#fff;font-weight:800;font-size:15px;cursor:pointer;font-family:inherit;
+}
+.planbtn:disabled{opacity:.6;cursor:default}
+
+.weeklabel{font-size:12px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);margin:4px 0 10px}
+.pday{
+  display:flex;gap:12px;align-items:flex-start;padding:12px 13px;margin-bottom:8px;
+  background:var(--surf);border:1px solid var(--line);border-radius:14px;
+}
+.pday .dow{font-size:13px;font-weight:800;width:26px;flex:0 0 auto;color:var(--ink-3);padding-top:1px}
+.pday .body{flex:1;min-width:0}
+.pday .ttl{font-size:14px;font-weight:700}
+.pday .det{font-size:12.5px;color:var(--ink-2);margin-top:2px;line-height:1.45}
+.pday.k-kvalita{border-color:rgba(255,77,141,.35)}
+.pday.k-kvalita .dow{color:var(--pink)}
+.pday.k-trénink .dow{color:var(--cyan)}
+.pday.k-regenerace .dow{color:var(--violet)}
+.pday.k-volno{opacity:.7}
+.pday.k-závod{background:rgba(255,77,141,.12);border-color:rgba(255,77,141,.4)}
+.pday.k-závod .dow{color:var(--pink)}
+.pday.k-závod .ttl::before{content:"🏁 "}
+
+#planChat{margin-top:18px;display:flex;flex-direction:column;gap:10px}
+.pmsg{max-width:88%;font-size:13.5px;line-height:1.5;padding:11px 13px;border-radius:16px}
+.pmsg.user{align-self:flex-end;background:var(--surf);border:1px solid var(--line);border-radius:16px 16px 5px 16px;white-space:pre-wrap}
+.pmsg.ai{align-self:flex-start;background:var(--surf-2);border:1px solid var(--line);border-radius:16px 16px 16px 5px}
+.pmsg.ai::before{content:"🧠 ";}

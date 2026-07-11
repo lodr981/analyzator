@@ -33,7 +33,7 @@ Na Railway přidej `ANTHROPIC_API_KEY` v nastavení proměnných prostředí.
 1. ~~AI komentář přes Claude API~~ ✅ hotovo
 2. ~~Historie aktivit~~ ✅ hotovo
 3. ~~Databáze na serveru~~ ✅ hotovo (Postgres na Railway, fallback na soubor)
-4. **Plán z chatu** — trenér napíše týden, AI ho rozloží
+4. ~~Plán z chatu~~ ✅ hotovo (AI rozloží týden Po–Ne, řeší i změny/nemoc)
 5. **Forma & periodizace** — křivka zátěže, vyladění na závod
 6. **Denní rutina** — cviky a protažení s počty, auto-odškrtání z dat
 7. **Připomínky** — PWA push + e-mail (nenahráno / nesplněno / streak)
@@ -74,6 +74,7 @@ server.js          Express server: /api/upload, /api/activities
 src/parse.js       parser FIT/TCX/GPX → jednotný souhrn + zóny tepu
 src/coach.js       pravidlové hodnocení (rating, zóny, chipy) + fallback text
 src/aiCoach.js     AI komentář trenéra přes Claude API (claude-opus-4-8)
-src/db.js          úložiště aktivit (Postgres / souborový fallback)
-public/            frontend (nahrání, analýza, historie, PWA)
+src/aiPlan.js      plán z chatu — AI rozloží týden (structured outputs)
+src/db.js          úložiště aktivit + plánu (Postgres / souborový fallback)
+public/            frontend (nahrání, analýza, plán, historie, PWA)
 ```
