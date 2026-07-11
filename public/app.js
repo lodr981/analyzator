@@ -92,6 +92,11 @@ async function uploadFile(file) {
     render(data);
     cacheActivity(data);
     msg.className = 'msg';
+    if (data.saved === false) {
+      $('dbWarn').hidden = false;
+      const det = $('dbWarnDetail');
+      if (det) det.textContent = ' Poslední aktivita se neuložila do databáze (backend: ' + (data.db || '?') + ').';
+    }
   } catch (err) {
     showMsg('⚠️ ' + err.message, 'err');
   }

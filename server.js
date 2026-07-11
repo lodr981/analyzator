@@ -29,7 +29,13 @@ const genId = () => Date.now() + '-' + Math.random().toString(36).slice(2, 8);
 const fingerprint = (s) =>
   [s.sport || '', s.startTime || '', s.distanceKm ?? '', s.durationSec ?? ''].join('|');
 
-app.use(express.static(path.join(__dirname, 'public')));
+// HTML nikdy necachovat (ať opravy vždy dorazí i do appky na ploše);
+// verzované JS/CSS (?v=) se pak natáhnou čerstvé.
+app.use(express.static(path.join(__dirname, 'public'), {
+  setHeaders: (res, filePath) => {
+    if (filePath.endsWith('.html')) res.setHeader('Cache-Control', 'no-store, must-revalidate');
+  },
+}));
 app.use(express.json());
 
 // Nahrání a vyhodnocení aktivity.
@@ -69,14 +75,16 @@ app.post('/api/upload', upload.single('activity'), async (req, res) => {
       },
     };
 
-    // Ulož na server (best-effort — chyba DB nesmí shodit vyhodnocení).
+    // Ulož na server (chyba DB nesmí shodit vyhodnocení, ale nahlásíme ji).
+    let saved = false;
     try {
       await addActivity(record);
+      saved = true;
     } catch (dbErr) {
       console.error('DB save error:', dbErr.message);
     }
 
-    res.json(record);
+    res.json({ ...record, saved, db: dbBackend() });
   } catch (err) {
     console.error('parse error:', err.message);
     res.status(422).json({ error: err.message || 'Soubor se nepodařilo zpracovat.' });

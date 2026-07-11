@@ -74,7 +74,8 @@ async function connectPostgres() {
     for (const url of urls) {
       for (const ssl of sslModes) {
         try {
-          const p = new pg.Pool({ connectionString: url, ssl, connectionTimeoutMillis: 6000 });
+          const p = new pg.Pool({ connectionString: url, ssl, connectionTimeoutMillis: 6000, keepAlive: true, idleTimeoutMillis: 30000 });
+          p.on('error', (e) => console.error('pg pool error (idle):', e.message)); // ať odpojení nezhodí proces
           await p.query('SELECT 1');
           pool = p;
           await ensureSchema();
