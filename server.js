@@ -9,6 +9,7 @@ import { aiEnabled, generateCoachComment } from './src/aiCoach.js';
 import { generatePlan, planAiEnabled } from './src/aiPlan.js';
 import { computeForm } from './src/form.js';
 import { generateReply, assistantEnabled } from './src/assistant.js';
+import { ROUTINE, routineDigest } from './src/routine.js';
 import {
   initDb, dbBackend, dbInfo, addActivity, listActivities, deleteActivity, findByFingerprint,
   getPlan, savePlan, getChat, saveChat, listMeasurements, listNutrition, getRoutine, saveRoutine,
@@ -181,11 +182,12 @@ const shortDate = (iso) => {
 
 // Sestaví kompaktní kontext pro AI (ekonomicky — jen to podstatné).
 async function buildDigest() {
-  const [acts, planState, meas, nutr] = await Promise.all([
+  const [acts, planState, meas, nutr, routineState] = await Promise.all([
     listActivities().catch(() => []),
     getPlan().catch(() => null),
     listMeasurements().catch(() => []),
     listNutrition().catch(() => []),
+    getRoutine().catch(() => ({})),
   ]);
 
   const lines = [`Dnes: ${new Date().toISOString().slice(0, 10)}`];
@@ -227,6 +229,8 @@ async function buildDigest() {
     for (const n of nutr.slice(0, 5)) lines.push(`  ${shortDate(n.date)}: ${n.text}`);
   }
 
+  lines.push('\n' + routineDigest(routineState[todayKey()] || []));
+
   return lines.join('\n');
 }
 
@@ -265,7 +269,7 @@ const todayKey = () => new Date().toISOString().slice(0, 10);
 app.get('/api/routine', async (_req, res) => {
   try {
     const state = await getRoutine();
-    res.json({ date: todayKey(), done: state[todayKey()] || [] });
+    res.json({ date: todayKey(), done: state[todayKey()] || [], routine: ROUTINE });
   } catch (err) {
     console.error('routine get error:', err.message);
     res.status(500).json({ error: 'Nepodařilo se načíst rutinu.' });

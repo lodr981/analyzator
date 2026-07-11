@@ -121,6 +121,11 @@ input[type=file]{display:none}
 .exrow.done .nm{color:var(--ink-3);text-decoration:line-through}
 .exrow .nm{flex:1;font-size:14px;font-weight:600}
 .exrow .rp{font-size:12px;color:var(--ink-3);font-weight:700;flex:0 0 auto}
+.exinfo{width:24px;height:24px;border-radius:50%;background:var(--surf-2);border:1px solid var(--line);color:var(--ink-2);font-weight:800;font-size:13px;display:grid;place-items:center;flex:0 0 auto}
+.exwrap{margin-bottom:8px}
+.exwrap .exrow{margin-bottom:0}
+.exdetail{background:var(--surf-2);border:1px solid var(--line);border-top:none;border-radius:0 0 14px 14px;padding:11px 14px;font-size:12.5px;line-height:1.5;color:var(--ink-2);margin-top:-6px}
+.exdetail b{color:var(--ink)}
 
 /* ===== historie ===== */
 .hgreet{font-size:20px;font-weight:800;letter-spacing:-.02em;margin-bottom:16px}

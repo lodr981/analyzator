@@ -271,6 +271,17 @@ export async function saveRoutine(state) {
   return state;
 }
 
+// Odškrtne dané cviky pro dnešek (používá parťák-chat: "odcvičil jsem").
+export async function markRoutineDone(ids) {
+  const state = await getRoutine();
+  const key = new Date().toISOString().slice(0, 10);
+  const set = new Set(state[key] || []);
+  for (const id of ids) set.add(id);
+  state[key] = [...set];
+  await saveRoutine(state);
+  return state[key];
+}
+
 // ---- váha & míry ----
 const MEAS_FILE = path.join(DATA_DIR, 'measurements.json');
 const newId = () => Date.now() + '-' + Math.random().toString(36).slice(2, 7);

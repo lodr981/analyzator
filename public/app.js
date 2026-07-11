@@ -262,57 +262,66 @@ function renderChat(state) {
 }
 
 // ---------- denní rutina ----------
-const ROUTINE = [
-  { group: 'Protahování & mobilita', items: [
-    { id: 'm1', name: 'Kyčle — výpady s rotací', reps: '2×10' },
-    { id: 'm2', name: 'Hrudní páteř — rotace vsedě', reps: '2×8' },
-    { id: 'm3', name: 'Lýtka & achilovky', reps: '3×20 s' },
-    { id: 'm4', name: 'Hamstringy vleže', reps: '2×30 s' },
-  ] },
-  { group: 'Síla & core', items: [
-    { id: 's1', name: 'Plank', reps: '3×45 s' },
-    { id: 's2', name: 'Boční plank', reps: '2×30 s / strana' },
-    { id: 's3', name: 'Mrtvý brouk (core)', reps: '3×12' },
-    { id: 's4', name: 'Dřepy na jedné noze', reps: '3×8 / noha' },
-    { id: 's5', name: 'Glute bridge (mostík)', reps: '3×15' },
-  ] },
-];
-const ROUTINE_TOTAL = ROUTINE.reduce((n, g) => n + g.items.length, 0);
+let routineDef = [];
+let routineTotal = 1;
 let routineDone = [];
 
 async function renderRoutine() {
   try {
     const res = await fetch('/api/routine');
-    if (res.ok) routineDone = (await res.json()).done || [];
+    if (res.ok) {
+      const d = await res.json();
+      routineDone = d.done || [];
+      if (d.routine) routineDef = d.routine;
+    }
   } catch {}
+  routineTotal = routineDef.reduce((n, g) => n + g.items.length, 0) || 1;
   paintRoutine();
 }
 
 function paintRoutine() {
   const done = new Set(routineDone);
-  $('routineBody').innerHTML = ROUTINE.map((g) => `
+  const body = $('routineBody');
+  body.innerHTML = routineDef.map((g) => `
     <div class="exgroup">
       <div class="h">${esc(g.group)}</div>
       ${g.items.map((it) => `
-        <button class="exrow ${done.has(it.id) ? 'done' : ''}" data-ex="${it.id}">
-          <span class="box">✓</span>
-          <span class="nm">${esc(it.name)}</span>
-          <span class="rp">${esc(it.reps)}</span>
-        </button>`).join('')}
+        <div class="exwrap">
+          <div class="exrow ${done.has(it.id) ? 'done' : ''}" data-ex="${it.id}">
+            <span class="box">✓</span>
+            <span class="nm">${esc(it.name)}</span>
+            <span class="rp">${esc(it.reps)}</span>
+            <span class="exinfo" data-info="${it.id}">?</span>
+          </div>
+          <div class="exdetail" data-detail="${it.id}" hidden>
+            <div><b>Jak:</b> ${esc(it.how || '')}</div>
+            <div style="margin-top:5px"><b>Proč:</b> ${esc(it.why || '')}</div>
+          </div>
+        </div>`).join('')}
     </div>`).join('');
 
-  document.querySelectorAll('.exrow').forEach((row) =>
-    row.addEventListener('click', () => toggleEx(row.dataset.ex))
+  body.querySelectorAll('.exrow').forEach((row) =>
+    row.addEventListener('click', (e) => {
+      if (e.target.closest('.exinfo')) return; // klik na „?" neodškrtává
+      toggleEx(row.dataset.ex);
+    })
+  );
+  body.querySelectorAll('.exinfo').forEach((btn) =>
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const d = body.querySelector(`.exdetail[data-detail="${btn.dataset.info}"]`);
+      if (d) d.hidden = !d.hidden;
+    })
   );
 
   const n = routineDone.length;
-  $('routineCount').textContent = `${n}/${ROUTINE_TOTAL} hotovo`;
-  $('routineBar').style.width = Math.round((n / ROUTINE_TOTAL) * 100) + '%';
-  $('routineMsg').textContent = n >= ROUTINE_TOTAL
+  $('routineCount').textContent = `${n}/${routineTotal} hotovo`;
+  $('routineBar').style.width = Math.round((n / routineTotal) * 100) + '%';
+  $('routineMsg').textContent = n >= routineTotal
     ? 'Hotovo, celá rutina! Přesně tak se dělá rozdíl. 🔥'
     : n === 0
-      ? 'Rutina není bonus, je součást tréninku. Silný core = víc wattů a míň zranění. 💪'
-      : `Ještě ${ROUTINE_TOTAL - n} a máš to. Nepolevuj. 💪`;
+      ? 'Rutina není bonus, je součást tréninku. Silný core = víc wattů a míň zranění. Klepni na „?" u cviku, když nevíš jak na to. 💪'
+      : `Ještě ${routineTotal - n} a máš to. Nepolevuj. 💪`;
 }
 
 async function toggleEx(exId) {

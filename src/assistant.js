@@ -4,7 +4,8 @@
 // jen kompaktní přehled, ne celá data.
 
 import Anthropic from '@anthropic-ai/sdk';
-import { addMeasurement, addNutrition, updateActivity } from './db.js';
+import { addMeasurement, addNutrition, updateActivity, markRoutineDone } from './db.js';
+import { ROUTINE_IDS } from './routine.js';
 
 export function assistantEnabled() {
   return Boolean(process.env.ANTHROPIC_API_KEY);
@@ -18,10 +19,13 @@ Máš k dispozici KONTEXT (poslední aktivity s jejich id, plán týdne, formu, 
 Odpovídej na dotazy a hlavně na POROVNÁNÍ a ANALÝZU (dnešní vs včerejší trénink, tento vs minulý týden apod.) z toho kontextu.
 Když něco v kontextu chybí, řekni to a případně se doptej — nevymýšlej si čísla.
 
+Umíš taky VYSVĚTLIT cviky z denní rutiny — jak je správně dělat a proč (máš je v kontextu i s návodem a zdůvodněním). Když se Oliver zeptá "jak dělat plank" nebo "proč mrtvý brouk", srozumitelně mu to popiš.
+
 Máš nástroje. Používej je, když Oliver píše běžnou řečí (žádné formuláře):
 - log_weight: když napíše kolik váží ("dnes 52 kilo").
 - log_nutrition: když popíše co jedl/pil ("k obědu těstoviny s kuřecím").
 - tag_activity: když upřesní k aktivitě, že to byl závod (ne trénink), nebo přidá poznámku. activity_id vezmi z kontextu.
+- check_routine: když napíše, že cvičil ("odcvičil jsem", "hotová rutina"). Bez upřesnění odškrtni celou dnešní rutinu; když zmíní jen část (třeba jen core), odškrtni jen ta id.
 Po zápisu to krátce potvrď.
 
 Oliver má i lidského trenéra (mluv o něm neutrálně jako "trenér", bez jména) — finální slovo má vždy on.
@@ -65,6 +69,16 @@ const TOOLS = [
       required: ['activity_id'],
     },
   },
+  {
+    name: 'check_routine',
+    description: 'Odškrtni dnešní denní rutinu jako splněnou, když Oliver napíše, že cvičil. Bez exercise_ids odškrtne celou rutinu; s exercise_ids jen vyjmenované cviky (id z kontextu rutiny).',
+    input_schema: {
+      type: 'object',
+      properties: {
+        exercise_ids: { type: 'array', items: { type: 'string' }, description: 'Id cviků z kontextu; vynech pro celou rutinu.' },
+      },
+    },
+  },
 ];
 
 async function runTool(name, input) {
@@ -83,6 +97,11 @@ async function runTool(name, input) {
       if (input.note) patch.note = input.note;
       const updated = await updateActivity(input.activity_id, patch);
       return updated ? 'Aktivita upravena.' : 'Tuhle aktivitu jsem v kontextu nenašel.';
+    }
+    if (name === 'check_routine') {
+      const ids = input.exercise_ids?.length ? input.exercise_ids : ROUTINE_IDS;
+      const done = await markRoutineDone(ids);
+      return `Odškrtnuto ${ids.length} cviků (dnes hotovo ${done.length}/${ROUTINE_IDS.length}).`;
     }
     return 'Neznámý nástroj.';
   } catch (err) {
