@@ -9,14 +9,30 @@ const ZONE_COLORS = ['#3DE0FF', '#5FBCF0', '#8E7BF0', '#C85CE0', '#FF4D8D'];
 const SPORT_ICON = { bike: '🚴', run: '🏃', swim: '🏊', hike: '🥾', ski: '⛷️', unknown: '❤️' };
 const HIST_KEY = 'tempo:history';
 
-// ---------- historie (localStorage) ----------
-function loadHistory() {
+// ---------- historie (server + localStorage cache) ----------
+function loadCache() {
   try { return JSON.parse(localStorage.getItem(HIST_KEY)) || []; } catch { return []; }
 }
-function saveActivity(data) {
-  const list = loadHistory();
-  list.unshift({ id: Date.now() + '-' + Math.random().toString(36).slice(2, 7), ts: Date.now(), ...data });
-  localStorage.setItem(HIST_KEY, JSON.stringify(list.slice(0, 200)));
+function saveCache(list) {
+  try { localStorage.setItem(HIST_KEY, JSON.stringify(list.slice(0, 200))); } catch {}
+}
+// Přidá záznam do lokální cache (server ho ukládá sám při uploadu).
+function cacheActivity(record) {
+  const list = loadCache();
+  if (!list.some((a) => a.id === record.id)) list.unshift(record);
+  saveCache(list);
+}
+// Načte historii ze serveru; když server nejede, použije lokální cache.
+async function fetchActivities() {
+  try {
+    const res = await fetch('/api/activities');
+    if (res.ok) {
+      const list = await res.json();
+      saveCache(list);
+      return list;
+    }
+  } catch {}
+  return loadCache();
 }
 
 // ---------- drag & drop ----------
@@ -68,7 +84,7 @@ async function uploadFile(file) {
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Něco se pokazilo.');
     render(data);
-    saveActivity(data);
+    cacheActivity(data);
     msg.className = 'msg';
   } catch (err) {
     showMsg('⚠️ ' + err.message, 'err');
@@ -127,8 +143,8 @@ function cell(big, unit, label) {
 }
 
 // ---------- vykreslení historie ----------
-function renderHistory() {
-  const list = loadHistory();
+async function renderHistory() {
+  const list = await fetchActivities();
   const now = new Date();
 
   // začátek tohoto týdne (pondělí 00:00)
@@ -188,7 +204,7 @@ function esc(s) {
 }
 
 // ---------- start: obnov poslední hodnocení ----------
-(function init() {
-  const list = loadHistory();
+(async function init() {
+  const list = await fetchActivities();
   if (list.length) render(list[0]);
 })();

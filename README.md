@@ -31,12 +31,13 @@ Na Railway přidej `ANTHROPIC_API_KEY` v nastavení proměnných prostředí.
 ## Roadmapa (další kroky)
 
 1. ~~AI komentář přes Claude API~~ ✅ hotovo
-2. ~~Historie aktivit~~ ✅ hotovo (zatím v prohlížeči / localStorage, per zařízení)
-3. **Databáze na serveru** — sdílení mezi zařízeními + okno pro trenéra/rodiče
+2. ~~Historie aktivit~~ ✅ hotovo
+3. ~~Databáze na serveru~~ ✅ hotovo (Postgres na Railway, fallback na soubor)
 4. **Plán z chatu** — trenér napíše týden, AI ho rozloží
 5. **Forma & periodizace** — křivka zátěže, vyladění na závod
 6. **Denní rutina** — cviky a protažení s počty, auto-odškrtání z dat
 7. **Připomínky** — PWA push + e-mail (nenahráno / nesplněno / streak)
+8. **Přihlášení / okno pro trenéra & rodiče** (zatím bez ověření)
 
 ## Spuštění lokálně
 
@@ -54,12 +55,25 @@ Poslouchá na `process.env.PORT`, takže není potřeba nic dalšího nastavovat
 1. Propoj repozitář v Railway
 2. Deploy proběhne sám ze `start` skriptu
 
+### Databáze (Postgres) — sdílení mezi zařízeními
+
+Historie se ukládá na server. Bez databáze appka běží taky (souborové úložiště,
+které se ale na Railway při každém deployi smaže). Pro trvalé sdílení mezi
+zařízeními přidej Postgres:
+
+1. V projektu na Railway: **New → Database → Add PostgreSQL**
+2. Railway sám nastaví proměnnou `DATABASE_URL` (appka ji rovnou použije)
+3. Pokud by připojení hlásilo SSL chybu, přidej proměnnou `DATABASE_SSL=true`
+
+Stav úložiště zkontroluješ na `/healthz` (`"db":"postgres"` nebo `"file"`).
+
 ## Struktura
 
 ```
-server.js          Express server + /api/upload
+server.js          Express server: /api/upload, /api/activities
 src/parse.js       parser FIT/TCX/GPX → jednotný souhrn + zóny tepu
 src/coach.js       pravidlové hodnocení (rating, zóny, chipy) + fallback text
 src/aiCoach.js     AI komentář trenéra přes Claude API (claude-opus-4-8)
-public/            frontend (upload + analýza, PWA)
+src/db.js          úložiště aktivit (Postgres / souborový fallback)
+public/            frontend (nahrání, analýza, historie, PWA)
 ```
