@@ -31,10 +31,12 @@ Na Railway přidej `ANTHROPIC_API_KEY` v nastavení proměnných prostředí.
 ## Roadmapa (další kroky)
 
 1. ~~AI komentář přes Claude API~~ ✅ hotovo
-2. **Plán z chatu** — trenér napíše týden, AI ho rozloží
-3. **Historie & databáze** — ukládání aktivit, týdenní/měsíční přehledy, forma a periodizace
-4. **Denní rutina** — cviky a protažení s počty, auto-odškrtání z dat
-5. **Připomínky** — PWA push + e-mail (nenahráno / nesplněno / streak)
+2. ~~Historie aktivit~~ ✅ hotovo (zatím v prohlížeči / localStorage, per zařízení)
+3. **Databáze na serveru** — sdílení mezi zařízeními + okno pro trenéra/rodiče
+4. **Plán z chatu** — trenér napíše týden, AI ho rozloží
+5. **Forma & periodizace** — křivka zátěže, vyladění na závod
+6. **Denní rutina** — cviky a protažení s počty, auto-odškrtání z dat
+7. **Připomínky** — PWA push + e-mail (nenahráno / nesplněno / streak)
 
 ## Spuštění lokálně
 

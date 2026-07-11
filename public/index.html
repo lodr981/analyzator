@@ -14,7 +14,7 @@
   <meta name="apple-mobile-web-app-title" content="TEMPO" />
   <meta name="mobile-web-app-capable" content="yes" />
 
-  <link rel="stylesheet" href="/styles.css?v=4" />
+  <link rel="stylesheet" href="/styles.css?v=5" />
 </head>
 <body>
   <div class="app">
@@ -28,60 +28,85 @@
       </div>
     </div>
 
-    <!-- UPLOAD -->
-    <section id="uploader">
-      <label class="drop" id="drop" for="file">
-        <div class="em">📥</div>
-        <h2>Nahraj aktivitu</h2>
-        <p>Klepni a vyber soubor ze Souborů</p>
-        <div class="fmt">.fit · .tcx · .gpx</div>
-      </label>
-      <input type="file" id="file" />
-      <div class="hint">Stáhni aktivitu z Garmin Connectu (Export → TCX) a vyber ji tady ze <b>Souborů</b>.</div>
-      <div class="msg" id="msg"></div>
-    </section>
+    <!-- ===== OBRAZOVKA: NAHRÁT + ANALÝZA ===== -->
+    <div id="screen-upload">
+      <section id="uploader">
+        <label class="drop" id="drop" for="file">
+          <div class="em">📥</div>
+          <h2>Nahraj aktivitu</h2>
+          <p>Klepni a vyber soubor ze Souborů</p>
+          <div class="fmt">.fit · .tcx · .gpx</div>
+        </label>
+        <input type="file" id="file" />
+        <div class="hint">Stáhni aktivitu z Garmin Connectu (Export → TCX) a vyber ji tady ze <b>Souborů</b>.</div>
+        <div class="msg" id="msg"></div>
+      </section>
 
-    <!-- RESULT -->
-    <section class="result" id="result">
-      <div class="top">
-        <div class="title" id="title">Aktivita<small id="subtitle"></small></div>
-        <div class="rating" id="rating"></div>
-      </div>
+      <section class="result" id="result">
+        <div class="top">
+          <div class="title" id="title">Aktivita<small id="subtitle"></small></div>
+          <div class="rating" id="rating"></div>
+        </div>
 
-      <div class="card grad">
-        <div class="metrics" id="metrics"></div>
-      </div>
+        <div class="card grad">
+          <div class="metrics" id="metrics"></div>
+        </div>
 
-      <div class="card">
-        <div class="coach">
-          <div class="avatar" aria-hidden="true">🧠</div>
-          <div style="flex:1">
-            <span id="aibadge" class="aibadge" style="display:none">✨ AI trenér</span>
-            <div class="bubble" id="headline"></div>
+        <div class="card">
+          <div class="coach">
+            <div class="avatar" aria-hidden="true">🧠</div>
+            <div style="flex:1">
+              <span id="aibadge" class="aibadge" style="display:none">✨ AI trenér</span>
+              <div class="bubble" id="headline"></div>
+            </div>
           </div>
         </div>
-      </div>
 
-      <div class="card" id="zonesCard">
-        <div class="lbl" style="margin-bottom:9px">Tep v zónách</div>
-        <div class="zones">
-          <div class="zonebar" id="zonebar"></div>
-          <div class="zonelegend"><span>Z1 regenerace</span><span>Z3 tempo</span><span>Z5 max</span></div>
+        <div class="card" id="zonesCard">
+          <div class="lbl" style="margin-bottom:9px">Tep v zónách</div>
+          <div class="zones">
+            <div class="zonebar" id="zonebar"></div>
+            <div class="zonelegend"><span>Z1 regenerace</span><span>Z3 tempo</span><span>Z5 max</span></div>
+          </div>
         </div>
+
+        <div class="card" id="listsCard">
+          <div class="lists" id="lists"></div>
+        </div>
+
+        <div class="chips" id="chips" style="margin-bottom:14px"></div>
+
+        <button class="again" id="again">↺ Nahrát další aktivitu</button>
+      </section>
+    </div>
+
+    <!-- ===== OBRAZOVKA: HISTORIE ===== -->
+    <div id="screen-history" hidden>
+      <div class="hgreet">Historie 📚<small>Sleduj, jak se zlepšuješ</small></div>
+
+      <div class="statrow">
+        <div class="card statcard"><div class="lbl">Tento týden</div><div class="statbig" id="weekKm">0</div><div class="statsub">km</div></div>
+        <div class="card statcard"><div class="lbl">Tento měsíc</div><div class="statbig" id="monthKm">0</div><div class="statsub">km</div></div>
+        <div class="card statcard"><div class="lbl">Celkem</div><div class="statbig" id="totalCount">0</div><div class="statsub">tréninků</div></div>
       </div>
 
-      <div class="card" id="listsCard">
-        <div class="lists" id="lists"></div>
-      </div>
+      <div id="historyList"></div>
+      <div id="historyEmpty" class="hint" style="margin-top:20px">Zatím žádné aktivity. Nahraj první! 🚴</div>
+    </div>
 
-      <div class="chips" id="chips" style="margin-bottom:14px"></div>
-
-      <button class="again" id="again">↺ Nahrát další aktivitu</button>
-    </section>
-
-    <div class="foot">TEMPO · v0.1 · tréninkový parťák</div>
+    <!-- ===== SPODNÍ NAVIGACE ===== -->
+    <nav class="tabbar">
+      <button class="tab on" data-screen="upload">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M12 16V4m0 0l-5 5m5-5l5 5M5 20h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Nahrát
+      </button>
+      <button class="tab" data-screen="history">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M4 6h16M4 12h16M4 18h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        Historie
+      </button>
+    </nav>
   </div>
 
-  <script src="/app.js?v=4"></script>
+  <script src="/app.js?v=5"></script>
 </body>
 </html>
