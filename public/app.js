@@ -362,8 +362,14 @@ function esc(s) {
   return String(s).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
 }
 
-// ---------- start: obnov poslední hodnocení ----------
+// ---------- start ----------
 (async function init() {
+  // varuj, když se data neukládají trvale (na Railway = chybí Postgres)
+  try {
+    const h = await (await fetch('/healthz')).json();
+    if (h.db !== 'postgres') $('dbWarn').hidden = false;
+  } catch {}
+
   const list = await fetchActivities();
   if (list.length) render(list[0]);
 })();

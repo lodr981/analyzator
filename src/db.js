@@ -16,10 +16,9 @@ export function dbBackend() {
   return backend;
 }
 
-async function initPostgres() {
-  const { default: pg } = await import('pg');
-  const ssl = process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: false } : false;
-  pool = new pg.Pool({ connectionString: DATABASE_URL, ssl });
+// Vytvoří/aktualizuje schéma. Kritická je tabulka activities; zbytek nesmí
+// shodit Postgres (jinak bychom spadli na soubor a přišli o data v DB).
+async function ensureSchema() {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS activities (
       id            TEXT PRIMARY KEY,
@@ -34,62 +33,61 @@ async function initPostgres() {
       payload       JSONB NOT NULL
     );
   `);
-  // Nekritické rozšíření schématu — případná chyba nesmí shodit celý Postgres
-  // (jinak bychom spadli na souborové úložiště a přišli o data v DB).
   try {
     await pool.query('ALTER TABLE activities ADD COLUMN IF NOT EXISTS fp TEXT;');
     await pool.query('CREATE INDEX IF NOT EXISTS idx_activities_fp ON activities(fp);');
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS plan_state (
-        id         INT PRIMARY KEY,
-        updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-        state      JSONB NOT NULL
-      );
-    `);
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS chat_state (
-        id         INT PRIMARY KEY,
-        updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-        state      JSONB NOT NULL
-      );
-    `);
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS measurements (
-        id         TEXT PRIMARY KEY,
-        created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-        date       DATE,
-        weight_kg  REAL,
-        height_cm  REAL
-      );
-    `);
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS nutrition (
-        id         TEXT PRIMARY KEY,
-        created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-        date       DATE,
-        text       TEXT
-      );
-    `);
+    await pool.query(`CREATE TABLE IF NOT EXISTS plan_state (id INT PRIMARY KEY, updated_at TIMESTAMPTZ NOT NULL DEFAULT now(), state JSONB NOT NULL);`);
+    await pool.query(`CREATE TABLE IF NOT EXISTS chat_state (id INT PRIMARY KEY, updated_at TIMESTAMPTZ NOT NULL DEFAULT now(), state JSONB NOT NULL);`);
+    await pool.query(`CREATE TABLE IF NOT EXISTS measurements (id TEXT PRIMARY KEY, created_at TIMESTAMPTZ NOT NULL DEFAULT now(), date DATE, weight_kg REAL, height_cm REAL);`);
+    await pool.query(`CREATE TABLE IF NOT EXISTS nutrition (id TEXT PRIMARY KEY, created_at TIMESTAMPTZ NOT NULL DEFAULT now(), date DATE, text TEXT);`);
   } catch (e) {
     console.error('DDL rozšíření selhalo (pokračuji na Postgresu):', e.message);
   }
-  backend = 'postgres';
+}
+
+// Odolné připojení: zkusí bez SSL i s SSL a několikrát to zopakuje
+// (Railway DB nemusí být hned po startu ready). Když opravdu nejde, hodí chybu.
+async function connectPostgres() {
+  const { default: pg } = await import('pg');
+  const sslModes = process.env.DATABASE_SSL === 'true'
+    ? [{ rejectUnauthorized: false }]
+    : [false, { rejectUnauthorized: false }];
+
+  let lastErr;
+  for (let attempt = 1; attempt <= 6; attempt++) {
+    for (const ssl of sslModes) {
+      try {
+        const p = new pg.Pool({ connectionString: DATABASE_URL, ssl, connectionTimeoutMillis: 8000 });
+        await p.query('SELECT 1');
+        pool = p;
+        await ensureSchema();
+        backend = 'postgres';
+        console.log(`DB: postgres (ssl=${ssl ? 'ano' : 'ne'}, pokus ${attempt})`);
+        return;
+      } catch (err) {
+        lastErr = err;
+        try { await pool?.end(); } catch {}
+        pool = null;
+      }
+    }
+    await new Promise((r) => setTimeout(r, 1500 * attempt)); // narůstající prodleva
+  }
+  throw lastErr;
 }
 
 export async function initDb() {
   if (DATABASE_URL) {
     try {
-      await initPostgres();
-      console.log('DB: postgres');
+      await connectPostgres();
       return;
     } catch (err) {
-      console.error('Postgres init selhal, používám souborové úložiště:', err.message);
+      console.error('Postgres se nepřipojil ani po opakování, používám soubor:', err?.message);
     }
   }
   fs.mkdirSync(DATA_DIR, { recursive: true });
   if (!fs.existsSync(FILE)) fs.writeFileSync(FILE, '[]');
   backend = 'file';
-  console.log('DB: souborové úložiště (' + FILE + ')');
+  console.log('DB: souborové úložiště (' + FILE + ') — POZOR: na Railway se maže při deployi!');
 }
 
 // ---- souborový fallback ----
