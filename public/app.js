@@ -44,6 +44,7 @@ async function uploadFile(file) {
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Něco se pokazilo.');
     render(data);
+    try { localStorage.setItem('tempo:last', JSON.stringify(data)); } catch {}
     msg.className = 'msg';
   } catch (err) {
     showMsg('⚠️ ' + err.message, 'err');
@@ -121,3 +122,9 @@ function fmtDate(iso) {
 function esc(s) {
   return String(s).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
 }
+
+// Po znovuotevření appky rovnou ukaž poslední hodnocení (bez nutnosti nahrávat znovu).
+try {
+  const saved = localStorage.getItem('tempo:last');
+  if (saved) render(JSON.parse(saved));
+} catch {}
