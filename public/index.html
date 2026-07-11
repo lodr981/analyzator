@@ -5,7 +5,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#0C0A16" />
   <title>TEMPO — pro Olivera</title>
-  <link rel="stylesheet" href="/styles.css?v=2" />
+
+  <!-- PWA / iPhone „appka na plochu" -->
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="TEMPO" />
+  <meta name="mobile-web-app-capable" content="yes" />
+
+  <link rel="stylesheet" href="/styles.css?v=3" />
 </head>
 <body>
   <div class="app">
@@ -23,12 +32,12 @@
     <section id="uploader">
       <label class="drop" id="drop" for="file">
         <div class="em">📥</div>
-        <h2>Nahraj jízdu z Garminu</h2>
-        <p>Přetáhni sem soubor nebo klikni</p>
+        <h2>Nahraj aktivitu</h2>
+        <p>Klepni a vyber soubor ze Souborů</p>
         <div class="fmt">.fit · .tcx · .gpx</div>
       </label>
       <input type="file" id="file" />
-      <div class="hint">Vyexportuj aktivitu z Garmin Connectu a nahraj ji sem.</div>
+      <div class="hint">Stáhni aktivitu z Garmin Connectu (Export → TCX) a vyber ji tady ze <b>Souborů</b>.</div>
       <div class="msg" id="msg"></div>
     </section>
 
@@ -70,6 +79,6 @@
     <div class="foot">TEMPO · v0.1 · tréninkový parťák</div>
   </div>
 
-  <script src="/app.js?v=2"></script>
+  <script src="/app.js?v=3"></script>
 </body>
 </html>
