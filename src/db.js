@@ -129,6 +129,11 @@ function validDate(v) {
   return isNaN(d.getTime()) ? null : d.toISOString();
 }
 
+// Ochrana INSERTu do číselných sloupců: celé číslo (INTEGER) / číslo (REAL) / null.
+// Reálná data z Garminu mají desetinné trvání i tep, INTEGER by je odmítl.
+const asInt = (v) => (v == null || isNaN(Number(v)) ? null : Math.round(Number(v)));
+const asNum = (v) => (v == null || isNaN(Number(v)) ? null : Number(v));
+
 // Uloží jednu aktivitu (record = { id, ts, summary, coach, labels }).
 export async function addActivity(record) {
   if (backend === 'postgres') {
@@ -143,10 +148,10 @@ export async function addActivity(record) {
         record.id,
         validDate(s.startTime),
         s.sport || null,
-        s.distanceKm ?? null,
-        s.durationSec ?? null,
-        s.avgHr ?? null,
-        c.rating ?? null,
+        asNum(s.distanceKm),
+        asInt(s.durationSec),
+        asInt(s.avgHr),
+        asInt(c.rating),
         Boolean(c.aiGenerated),
         record.fp || null,
         record,
