@@ -11,7 +11,7 @@ import { computeForm } from './src/form.js';
 import { generateReply, assistantEnabled } from './src/assistant.js';
 import {
   initDb, dbBackend, dbInfo, addActivity, listActivities, deleteActivity, findByFingerprint,
-  getPlan, savePlan, getChat, saveChat, listMeasurements, listNutrition,
+  getPlan, savePlan, getChat, saveChat, listMeasurements, listNutrition, getRoutine, saveRoutine,
 } from './src/db.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -256,6 +256,39 @@ app.post('/api/chat/message', async (req, res) => {
   } catch (err) {
     console.error('chat message error:', err.message);
     res.status(500).json({ error: 'Něco se pokazilo, zkus to znovu.' });
+  }
+});
+
+// ---- Denní rutina (odškrtávání cviků po dnech) ----
+const todayKey = () => new Date().toISOString().slice(0, 10);
+
+app.get('/api/routine', async (_req, res) => {
+  try {
+    const state = await getRoutine();
+    res.json({ date: todayKey(), done: state[todayKey()] || [] });
+  } catch (err) {
+    console.error('routine get error:', err.message);
+    res.status(500).json({ error: 'Nepodařilo se načíst rutinu.' });
+  }
+});
+
+app.post('/api/routine/toggle', async (req, res) => {
+  const exId = String(req.body?.exId || '');
+  if (!exId) return res.status(400).json({ error: 'Chybí cvik.' });
+  try {
+    const state = await getRoutine();
+    const key = todayKey();
+    const set = new Set(state[key] || []);
+    if (set.has(exId)) set.delete(exId); else set.add(exId);
+    state[key] = [...set];
+    // úklid: nech jen posledních ~30 dní
+    const keys = Object.keys(state).sort();
+    while (keys.length > 30) delete state[keys.shift()];
+    await saveRoutine(state);
+    res.json({ date: key, done: state[key] });
+  } catch (err) {
+    console.error('routine toggle error:', err.message);
+    res.status(500).json({ error: 'Nepodařilo se uložit.' });
   }
 });
 

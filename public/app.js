@@ -66,6 +66,7 @@ function showScreen(name) {
   $('screen-upload').hidden = name !== 'upload';
   $('screen-chat').hidden = name !== 'chat';
   $('screen-plan').hidden = name !== 'plan';
+  $('screen-routine').hidden = name !== 'routine';
   $('screen-form').hidden = name !== 'form';
   $('screen-history').hidden = name !== 'history';
   document.querySelectorAll('.tab').forEach((t) => t.classList.toggle('on', t.dataset.screen === name));
@@ -73,6 +74,7 @@ function showScreen(name) {
   if (name === 'plan') loadPlan();
   if (name === 'form') renderForm();
   if (name === 'chat') loadChat();
+  if (name === 'routine') renderRoutine();
   window.scrollTo({ top: 0 });
 }
 
@@ -257,6 +259,75 @@ function renderChat(state) {
   $('chatMsgs').innerHTML = (state.messages || [])
     .map((m) => `<div class="pmsg ${m.role === 'user' ? 'user' : 'ai'}">${esc(m.text)}</div>`)
     .join('');
+}
+
+// ---------- denní rutina ----------
+const ROUTINE = [
+  { group: 'Protahování & mobilita', items: [
+    { id: 'm1', name: 'Kyčle — výpady s rotací', reps: '2×10' },
+    { id: 'm2', name: 'Hrudní páteř — rotace vsedě', reps: '2×8' },
+    { id: 'm3', name: 'Lýtka & achilovky', reps: '3×20 s' },
+    { id: 'm4', name: 'Hamstringy vleže', reps: '2×30 s' },
+  ] },
+  { group: 'Síla & core', items: [
+    { id: 's1', name: 'Plank', reps: '3×45 s' },
+    { id: 's2', name: 'Boční plank', reps: '2×30 s / strana' },
+    { id: 's3', name: 'Mrtvý brouk (core)', reps: '3×12' },
+    { id: 's4', name: 'Dřepy na jedné noze', reps: '3×8 / noha' },
+    { id: 's5', name: 'Glute bridge (mostík)', reps: '3×15' },
+  ] },
+];
+const ROUTINE_TOTAL = ROUTINE.reduce((n, g) => n + g.items.length, 0);
+let routineDone = [];
+
+async function renderRoutine() {
+  try {
+    const res = await fetch('/api/routine');
+    if (res.ok) routineDone = (await res.json()).done || [];
+  } catch {}
+  paintRoutine();
+}
+
+function paintRoutine() {
+  const done = new Set(routineDone);
+  $('routineBody').innerHTML = ROUTINE.map((g) => `
+    <div class="exgroup">
+      <div class="h">${esc(g.group)}</div>
+      ${g.items.map((it) => `
+        <button class="exrow ${done.has(it.id) ? 'done' : ''}" data-ex="${it.id}">
+          <span class="box">✓</span>
+          <span class="nm">${esc(it.name)}</span>
+          <span class="rp">${esc(it.reps)}</span>
+        </button>`).join('')}
+    </div>`).join('');
+
+  document.querySelectorAll('.exrow').forEach((row) =>
+    row.addEventListener('click', () => toggleEx(row.dataset.ex))
+  );
+
+  const n = routineDone.length;
+  $('routineCount').textContent = `${n}/${ROUTINE_TOTAL} hotovo`;
+  $('routineBar').style.width = Math.round((n / ROUTINE_TOTAL) * 100) + '%';
+  $('routineMsg').textContent = n >= ROUTINE_TOTAL
+    ? 'Hotovo, celá rutina! Přesně tak se dělá rozdíl. 🔥'
+    : n === 0
+      ? 'Rutina není bonus, je součást tréninku. Silný core = víc wattů a míň zranění. 💪'
+      : `Ještě ${ROUTINE_TOTAL - n} a máš to. Nepolevuj. 💪`;
+}
+
+async function toggleEx(exId) {
+  // optimisticky přepni hned
+  const i = routineDone.indexOf(exId);
+  if (i >= 0) routineDone.splice(i, 1); else routineDone.push(exId);
+  paintRoutine();
+  try {
+    const res = await fetch('/api/routine/toggle', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ exId }),
+    });
+    if (res.ok) { routineDone = (await res.json()).done || routineDone; paintRoutine(); }
+  } catch {}
 }
 
 // ---------- forma & periodizace ----------

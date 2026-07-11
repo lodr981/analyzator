@@ -52,6 +52,7 @@ async function ensureSchema() {
     await pool.query('CREATE INDEX IF NOT EXISTS idx_activities_fp ON activities(fp);');
     await pool.query(`CREATE TABLE IF NOT EXISTS plan_state (id INT PRIMARY KEY, updated_at TIMESTAMPTZ NOT NULL DEFAULT now(), state JSONB NOT NULL);`);
     await pool.query(`CREATE TABLE IF NOT EXISTS chat_state (id INT PRIMARY KEY, updated_at TIMESTAMPTZ NOT NULL DEFAULT now(), state JSONB NOT NULL);`);
+    await pool.query(`CREATE TABLE IF NOT EXISTS routine_state (id INT PRIMARY KEY, updated_at TIMESTAMPTZ NOT NULL DEFAULT now(), state JSONB NOT NULL);`);
     await pool.query(`CREATE TABLE IF NOT EXISTS measurements (id TEXT PRIMARY KEY, created_at TIMESTAMPTZ NOT NULL DEFAULT now(), date DATE, weight_kg REAL, height_cm REAL);`);
     await pool.query(`CREATE TABLE IF NOT EXISTS nutrition (id TEXT PRIMARY KEY, created_at TIMESTAMPTZ NOT NULL DEFAULT now(), date DATE, text TEXT);`);
   } catch (e) {
@@ -242,6 +243,30 @@ export async function saveChat(state) {
   } else {
     fs.mkdirSync(DATA_DIR, { recursive: true });
     fs.writeFileSync(CHAT_FILE, JSON.stringify(state));
+  }
+  return state;
+}
+
+// ---- denní rutina (stav odškrtání po dnech: { "YYYY-MM-DD": ["exId", ...] }) ----
+const ROUTINE_FILE = path.join(DATA_DIR, 'routine.json');
+
+export async function getRoutine() {
+  if (backend === 'postgres') {
+    const { rows } = await pool.query('SELECT state FROM routine_state WHERE id = 1');
+    return rows[0]?.state || {};
+  }
+  try { return JSON.parse(fs.readFileSync(ROUTINE_FILE, 'utf8')); } catch { return {}; }
+}
+export async function saveRoutine(state) {
+  if (backend === 'postgres') {
+    await pool.query(
+      `INSERT INTO routine_state (id, state, updated_at) VALUES (1, $1, now())
+       ON CONFLICT (id) DO UPDATE SET state = $1, updated_at = now()`,
+      [state]
+    );
+  } else {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+    fs.writeFileSync(ROUTINE_FILE, JSON.stringify(state));
   }
   return state;
 }
