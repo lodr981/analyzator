@@ -14,7 +14,7 @@
   <meta name="apple-mobile-web-app-title" content="TEMPO" />
   <meta name="mobile-web-app-capable" content="yes" />
 
-  <link rel="stylesheet" href="/styles.css?v=21" />
+  <link rel="stylesheet" href="/styles.css?v=22" />
 </head>
 <body>
   <div class="app">
@@ -205,6 +205,23 @@
         <div class="card statcard"><div class="lbl">Celkem</div><div class="statbig" id="totalCount">0</div><div class="statsub">tréninků</div></div>
       </div>
 
+      <div class="card" id="streakCard" style="display:none;text-align:center">
+        <div class="lbl">Série</div>
+        <div style="font-size:36px;font-weight:800;margin-top:4px;letter-spacing:-.02em">🔥 <span id="streakNum">0</span></div>
+        <div class="statsub" id="streakSub">dní v kuse</div>
+      </div>
+
+      <div class="card" id="recordsCard" style="display:none">
+        <div class="lbl" style="margin-bottom:6px">Osobní rekordy 🏆</div>
+        <div id="recordsBody"></div>
+      </div>
+
+      <div id="badgesWrap" style="display:none">
+        <div class="lbl" style="margin:6px 2px 10px">Odznaky</div>
+        <div id="badges" class="badges"></div>
+      </div>
+
+      <div class="lbl" id="historyHdr" style="display:none;margin:18px 2px 10px">Všechny aktivity</div>
       <div id="historyList"></div>
       <div id="historyEmpty" class="hint" style="margin-top:20px">Zatím žádné aktivity. Nahraj první! 🚴</div>
     </div>
@@ -238,6 +255,6 @@
     </nav>
   </div>
 
-  <script src="/app.js?v=21"></script>
+  <script src="/app.js?v=22"></script>
 </body>
 </html>

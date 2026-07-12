@@ -10,6 +10,7 @@ import { generatePlan, planAiEnabled } from './src/aiPlan.js';
 import { computeForm } from './src/form.js';
 import { generateReply, assistantEnabled } from './src/assistant.js';
 import { ROUTINE, routineDigest } from './src/routine.js';
+import { computeAchievements } from './src/achievements.js';
 import { initPush, pushReady, vapidPublicKey, sendToAll } from './src/push.js';
 import { dailyReminderCheck } from './src/reminders.js';
 import {
@@ -266,6 +267,17 @@ app.post('/api/chat/message', async (req, res) => {
   } catch (err) {
     console.error('chat message error:', err.message);
     res.status(500).json({ error: 'Něco se pokazilo, zkus to znovu.' });
+  }
+});
+
+// ---- Úspěchy: série, rekordy, odznaky ----
+app.get('/api/achievements', async (_req, res) => {
+  try {
+    const [acts, routine] = await Promise.all([listActivities(), getRoutine()]);
+    res.json(computeAchievements(acts, routine));
+  } catch (err) {
+    console.error('achievements error:', err.message);
+    res.status(500).json({ error: 'Nepodařilo se spočítat úspěchy.' });
   }
 });
 

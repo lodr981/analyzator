@@ -154,6 +154,20 @@ input[type=file]{display:none}
 .hrow .val span{font-size:10px;color:var(--ink-3)}
 .stars{color:var(--volt);font-size:11px;letter-spacing:1px}
 
+/* ===== úspěchy: rekordy & odznaky ===== */
+.rec{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--line);font-size:13.5px}
+.rec:last-child{border-bottom:none}
+.rec .rl{color:var(--ink-2)}
+.rec .rv{font-weight:800;font-variant-numeric:tabular-nums}
+.badges{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:10px}
+.badge{background:var(--surf);border:1px solid var(--line);border-radius:16px;padding:12px 8px;text-align:center}
+.badge.on{background:var(--surf-2);border-color:rgba(198,255,77,.4)}
+.badge.off{opacity:.55}
+.badge .bic{font-size:26px;filter:grayscale(1)}
+.badge.on .bic{filter:none}
+.badge .bnm{font-size:11px;font-weight:700;margin-top:5px;line-height:1.25}
+.badge .bpg{font-size:10px;color:var(--ink-3);font-weight:700;margin-top:3px}
+
 /* ===== plán z chatu ===== */
 .planbox{
   position:sticky;

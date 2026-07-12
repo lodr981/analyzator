@@ -181,13 +181,56 @@ async function renderHistory() {
   $('totalCount').textContent = list.length;
 
   $('historyEmpty').style.display = list.length ? 'none' : '';
+  $('historyHdr').style.display = list.length ? '' : 'none';
   $('historyList').innerHTML = list.map(historyRow).join('');
+  renderAchievements();
   document.querySelectorAll('.hrow').forEach((row, i) =>
     row.addEventListener('click', () => {
       render(list[i]);
       showScreen('upload');
     })
   );
+}
+
+async function renderAchievements() {
+  let a;
+  try { a = await (await fetch('/api/achievements')).json(); } catch { return; }
+  if (!a || a.error) return;
+
+  // série
+  const sc = $('streakCard');
+  if (a.streak > 0) {
+    sc.style.display = '';
+    $('streakNum').textContent = a.streak;
+    $('streakSub').textContent = a.streak === 1 ? 'den' : a.streak < 5 ? 'dny v kuse' : 'dní v kuse';
+  } else sc.style.display = 'none';
+
+  // rekordy
+  const r = a.records || {};
+  const rows = [];
+  if (r.longestKm) rows.push(['Nejdelší jízda', r.longestKm + ' km']);
+  if (r.fastestKmh) rows.push(['Nejrychleji', r.fastestKmh + ' km/h']);
+  if (r.elevationM) rows.push(['Nejvíc nastoupáno', r.elevationM + ' m']);
+  if (r.longestTimeSec) rows.push(['Nejdéle v sedle', fmtDur(r.longestTimeSec)]);
+  if (r.bestRunPace) rows.push(['Nejlepší tempo (běh)', r.bestRunPace + ' /km']);
+  const rc = $('recordsCard');
+  rc.style.display = rows.length ? '' : 'none';
+  $('recordsBody').innerHTML = rows.map(([l, v]) => `<div class="rec"><span class="rl">${l}</span><span class="rv">${esc(v)}</span></div>`).join('');
+
+  // odznaky
+  const bw = $('badgesWrap');
+  bw.style.display = (a.badges && a.badges.length) ? '' : 'none';
+  $('badges').innerHTML = (a.badges || []).map((b) => `
+    <div class="badge ${b.earned ? 'on' : 'off'}">
+      <div class="bic">${b.icon}</div>
+      <div class="bnm">${esc(b.name)}</div>
+      <div class="bpg">${b.earned ? '✓ splněno' : b.value + '/' + b.target}</div>
+    </div>`).join('');
+}
+
+function fmtDur(sec) {
+  const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60);
+  return h ? `${h}h${String(m).padStart(2, '0')}` : `${m} min`;
 }
 
 function historyRow(e) {
