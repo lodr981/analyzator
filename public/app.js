@@ -75,6 +75,7 @@ function showScreen(name) {
   if (name === 'form') renderForm();
   if (name === 'chat') loadChat();
   if (name === 'routine') renderRoutine();
+  if (name === 'upload') loadHome();
   window.scrollTo({ top: 0 });
 }
 
@@ -141,6 +142,7 @@ function render(data) {
 
   uploader.style.display = 'none';
   result.classList.add('show');
+  loadHome(); // připravenost se mění s novou aktivitou
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -259,8 +261,18 @@ const chatMsg = $('chatMsg');
 let chatLoaded = false;
 
 chatSend.addEventListener('click', sendChatMessage);
-document.querySelectorAll('#chatChips .chip').forEach((c) =>
-  c.addEventListener('click', () => { chatText.value = c.dataset.q; sendChatMessage(); })
+document.querySelectorAll('#chatChips .chip, #chatChips2 .chip').forEach((c) =>
+  c.addEventListener('click', () => {
+    if (c.dataset.fill != null) {
+      // šablona k doplnění — vlož a nech Olivera dopsat (neodesílej)
+      chatText.value = c.dataset.fill;
+      chatText.focus();
+      chatText.setSelectionRange(chatText.value.length, chatText.value.length);
+    } else {
+      chatText.value = c.dataset.q;
+      sendChatMessage();
+    }
+  })
 );
 $('askCoach').addEventListener('click', () => {
   showScreen('chat');
@@ -280,7 +292,7 @@ async function loadChat() {
       const state = await res.json();
       const off = state.aiEnabled === false;
       $('chatAiOff').hidden = !off;
-      $('chatChips').style.display = off ? 'none' : '';
+      $('chatChipsWrap').style.display = off ? 'none' : '';
       renderChat(state);
     }
   } catch {}
@@ -427,6 +439,72 @@ async function renderForm() {
   fv.style.color = data.form >= 0 ? 'var(--volt)' : 'var(--pink)';
   $('fitTrend').textContent = data.trend === 'up' ? 'roste ↗' : data.trend === 'down' ? 'klesá ↘' : 'drží →';
   $('formAdvice').textContent = data.advice;
+
+  renderCalendar(data.calendar || []);
+}
+
+// Kalendář konzistence — mřížka à la GitHub (sloupce = týdny, řádky Po–Ne).
+function loadBucket(load) {
+  if (load <= 0) return 0;
+  if (load <= 20) return 1;
+  if (load <= 40) return 2;
+  if (load <= 70) return 3;
+  return 4;
+}
+function renderCalendar(cal) {
+  const card = $('calCard');
+  if (!cal.length) { card.style.display = 'none'; return; }
+  card.style.display = '';
+  $('calGrid').innerHTML = cal.map((d) => {
+    const lv = loadBucket(d.load);
+    const t = d.load > 0 ? `${fmtDate(d.date)} · zátěž ${d.load}` : `${fmtDate(d.date)} · volno`;
+    return `<i class="cell lv${lv}" title="${t}"></i>`;
+  }).join('');
+}
+
+// ---------- domácí přehled: připravenost dne + odpočet na závod ----------
+async function loadHome() {
+  try {
+    const [r, g] = await Promise.all([
+      fetch('/api/readiness').then((x) => x.json()).catch(() => ({ empty: true })),
+      fetch('/api/goals').then((x) => x.json()).catch(() => ({ next: null })),
+    ]);
+    renderReadiness(r);
+    renderRace(g.next);
+  } catch {}
+}
+
+function renderReadiness(r) {
+  const card = $('readyCard');
+  card.style.display = '';
+  const row = $('readyRow'), hint = $('readyHint');
+  if (!r || r.empty) {
+    row.style.display = 'none';
+    hint.style.display = '';
+    return;
+  }
+  row.style.display = '';
+  hint.style.display = 'none';
+  const b = r.band;
+  $('readyScore').textContent = r.score;
+  $('readyScore').style.color = b.color;
+  $('readyRing').style.background =
+    `conic-gradient(${b.color} ${r.score * 3.6}deg, var(--surf-2) 0)`;
+  $('readyLabel').innerHTML = `${b.emoji} ${esc(b.label)}`;
+  $('readyLabel').style.color = b.color;
+  $('readyAdvice').textContent = b.advice;
+  $('readyReasons').innerHTML = (r.reasons || [])
+    .map((x) => `<span class="rz ${x.good ? 'g' : 'b'}">${x.good ? '✓' : '!'} ${esc(x.text)}</span>`)
+    .join('');
+}
+
+function renderRace(next) {
+  const card = $('raceCard');
+  if (!next) { card.style.display = 'none'; return; }
+  card.style.display = '';
+  $('raceDays').textContent = next.days === 0 ? 'DNES' : next.days === 1 ? 'zítra' : `za ${next.days} dní`;
+  $('raceName').textContent = next.title + (next.sport ? ' · ' + next.sport : '');
+  $('raceDate').textContent = fmtDate(next.date);
 }
 
 // Jednoduchý spojnicový graf (SVG) — jedna série, sdílená časová osa přes `domain`.
@@ -695,6 +773,13 @@ pushTest.addEventListener('click', async () => {
       }
     }
   } catch {}
+
+  loadHome();
+  $('readyHint').addEventListener('click', () => {
+    showScreen('chat');
+    chatText.value = 'Dneska jsem spal 8 hodin a cítím se na 4 z 5.';
+    chatText.focus();
+  });
 
   const list = await fetchActivities();
   if (list.length) render(list[0]);

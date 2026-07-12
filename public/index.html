@@ -14,7 +14,7 @@
   <meta name="apple-mobile-web-app-title" content="TEMPO" />
   <meta name="mobile-web-app-capable" content="yes" />
 
-  <link rel="stylesheet" href="/styles.css?v=24" />
+  <link rel="stylesheet" href="/styles.css?v=25" />
 </head>
 <body>
   <div class="app">
@@ -31,6 +31,26 @@
 
     <!-- ===== OBRAZOVKA: NAHRÁT + ANALÝZA ===== -->
     <div id="screen-upload">
+      <!-- denní přehled (plní se z parťák-chatu: spánek, pocit, závod) -->
+      <div id="homeDash">
+        <div class="card raceCard" id="raceCard" style="display:none">
+          <div class="raceTop"><span class="raceLbl">🏁 Další závod</span><span class="raceDays" id="raceDays"></span></div>
+          <div class="raceName" id="raceName"></div>
+          <div class="raceDate" id="raceDate"></div>
+        </div>
+        <div class="card readyCard" id="readyCard" style="display:none">
+          <div class="readyRow" id="readyRow">
+            <div class="readyRing" id="readyRing"><div class="readyScore" id="readyScore">–</div></div>
+            <div class="readyInfo">
+              <div class="readyLabel" id="readyLabel"></div>
+              <div class="readyAdvice" id="readyAdvice"></div>
+              <div class="readyReasons" id="readyReasons"></div>
+            </div>
+          </div>
+          <button class="readyHint" id="readyHint" style="display:none">😴 Napiš parťákovi, jak jsi spal a jak se cítíš — spočítám ti <b>připravenost dne</b>.</button>
+        </div>
+      </div>
+
       <section id="uploader">
         <label class="drop" id="drop" for="file">
           <div class="em">📥</div>
@@ -95,15 +115,26 @@
 
     <!-- ===== OBRAZOVKA: PARŤÁK CHAT ===== -->
     <div id="screen-chat" hidden>
-      <div class="hgreet">Parťák 🧠<small>Zeptej se na porovnání tréninků, napiš váhu, výšku, co jsi jedl…</small></div>
+      <div class="hgreet">Parťák 🧠<small>Piš, jak jsi spal, jak se cítíš, co jsi jedl — všechno počítám do formy a připravenosti.</small></div>
 
       <div id="chatAiOff" class="dbwarn" hidden>⚠️ Parťák zatím <b>neběží</b> — chybí AI klíč. Na Railway přidej proměnnou <b>ANTHROPIC_API_KEY</b>, jinak nejde chatovat ani zapisovat váhu/výšku/výživu.</div>
 
-      <div class="chips" id="chatChips">
-        <span class="chip" data-q="Porovnej můj dnešní trénink s minulým týdnem.">🆚 Dnešek vs minulý týden</span>
-        <span class="chip" data-q="Co je nového v cyklistice? Hoď mi něco na motivaci.">🚴 Novinky z cyklu</span>
-        <span class="chip" data-q="Kdo teď vede na velké silniční etapáku?">🏁 Kdo vede závod</span>
-        <span class="chip" data-q="Jak správně dělat plank a proč je pro kolo dobrý?">🤸 Jak na plank</span>
+      <div id="chatChipsWrap">
+        <div class="chiptitle">Rychlý zápis (klepni a doplň)</div>
+        <div class="chips" id="chatChips">
+          <span class="chip" data-fill="Dneska jsem spal 8 hodin a cítím se na 4 z 5.">😴 Spánek & pocit</span>
+          <span class="chip" data-fill="Mám svalovku tak na 3 z 5.">💪 Svalovka</span>
+          <span class="chip" data-fill="K obědu jsem si dal ">🍝 Co jsem jedl</span>
+          <span class="chip" data-fill="Dneska vážím  kg.">⚖️ Váha</span>
+          <span class="chip" data-fill="Přidej mi cíl: závod ">🏁 Zadat závod</span>
+        </div>
+        <div class="chiptitle">Zeptej se</div>
+        <div class="chips" id="chatChips2">
+          <span class="chip" data-q="Porovnej můj dnešní trénink s minulým týdnem.">🆚 Dnešek vs minulý týden</span>
+          <span class="chip" data-q="Jaká je moje připravenost a co mám dneska dělat?">🔋 Jak jsem na tom</span>
+          <span class="chip" data-q="Poraď mi, co jíst kolem tréninku, ať se líp regeneruju.">🥗 Strava & regenerace</span>
+          <span class="chip" data-q="Co je nového v cyklistice? Hoď mi něco na motivaci.">🚴 Novinky z cyklu</span>
+        </div>
       </div>
 
       <div id="chatMsgs"></div>
@@ -170,6 +201,12 @@
           <div class="avatar" aria-hidden="true">🧠</div>
           <div class="bubble" id="formAdvice"></div>
         </div>
+      </div>
+
+      <div class="card" id="calCard" style="display:none">
+        <div class="lbl" style="margin-bottom:10px">Konzistence — poslední 4 měsíce 🔥</div>
+        <div class="calWrap"><div class="calGrid" id="calGrid"></div></div>
+        <div class="calLegend"><span>míň</span><i class="cl lv0"></i><i class="cl lv1"></i><i class="cl lv2"></i><i class="cl lv3"></i><i class="cl lv4"></i><span>víc</span></div>
       </div>
 
       <div class="card" id="growthCard" style="display:none">
@@ -261,7 +298,7 @@
     </nav>
   </div>
 
-  <script src="/story.js?v=24"></script>
-  <script src="/app.js?v=24"></script>
+  <script src="/story.js?v=25"></script>
+  <script src="/app.js?v=25"></script>
 </body>
 </html>

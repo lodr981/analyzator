@@ -78,7 +78,15 @@ export function computeForm(activities) {
     weeks.push({ label: i === 0 ? 'teď' : 'T-' + i, load: Math.round(load), current: i === 0 });
   }
 
-  return { empty: false, fitness, fatigue, form, trend, weeks, advice: advice(form, trend, weeks) };
+  // kalendář konzistence: denní zátěž za posledních 16 týdnů (od pondělí)
+  const calStart = addDays(mondayOf(today), -15 * 7);
+  const calendar = [];
+  for (let d = new Date(calStart); d <= today; d = addDays(d, 1)) {
+    const k = dayKey(d);
+    calendar.push({ date: k, load: byDay[k] || 0 });
+  }
+
+  return { empty: false, fitness, fatigue, form, trend, weeks, calendar, advice: advice(form, trend, weeks) };
 }
 
 function advice(form, trend, weeks) {

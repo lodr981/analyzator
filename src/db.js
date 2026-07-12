@@ -57,6 +57,9 @@ async function ensureSchema() {
     await pool.query(`CREATE TABLE IF NOT EXISTS push_subs (endpoint TEXT PRIMARY KEY, sub JSONB NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT now());`);
     await pool.query(`CREATE TABLE IF NOT EXISTS measurements (id TEXT PRIMARY KEY, created_at TIMESTAMPTZ NOT NULL DEFAULT now(), date DATE, weight_kg REAL, height_cm REAL);`);
     await pool.query(`CREATE TABLE IF NOT EXISTS nutrition (id TEXT PRIMARY KEY, created_at TIMESTAMPTZ NOT NULL DEFAULT now(), date DATE, text TEXT);`);
+    await pool.query(`CREATE TABLE IF NOT EXISTS wellness (id TEXT PRIMARY KEY, created_at TIMESTAMPTZ NOT NULL DEFAULT now(), date DATE, sleep_hours REAL, feel INTEGER, resting_hr INTEGER, soreness INTEGER, note TEXT);`);
+    await pool.query('ALTER TABLE wellness ADD COLUMN IF NOT EXISTS soreness INTEGER;');
+    await pool.query(`CREATE TABLE IF NOT EXISTS goals (id TEXT PRIMARY KEY, created_at TIMESTAMPTZ NOT NULL DEFAULT now(), title TEXT, date DATE, sport TEXT);`);
   } catch (e) {
     console.error('DDL rozšíření selhalo (pokračuji na Postgresu):', e.message);
   }
@@ -387,6 +390,69 @@ export async function listNutrition() {
     return rows.map((r) => ({ ...r, date: r.date ? new Date(r.date).toISOString() : null }));
   }
   return mFile(NUTR_FILE);
+}
+
+// ---- wellness: spánek, ranní pocit, klidový tep (zápis přes parťák-chat) ----
+const WELL_FILE = path.join(DATA_DIR, 'wellness.json');
+
+export async function addWellness({ sleep_hours = null, feel = null, resting_hr = null, soreness = null, note = null, date = null }) {
+  const rec = {
+    id: newId(),
+    date: validDate(date) || new Date().toISOString(),
+    sleep_hours: asNum(sleep_hours),
+    feel: asInt(feel),
+    resting_hr: asInt(resting_hr),
+    soreness: asInt(soreness),
+    note: note ? String(note) : null,
+  };
+  if (backend === 'postgres') {
+    await pool.query(
+      'INSERT INTO wellness (id, date, sleep_hours, feel, resting_hr, soreness, note) VALUES ($1,$2,$3,$4,$5,$6,$7)',
+      [rec.id, rec.date, rec.sleep_hours, rec.feel, rec.resting_hr, rec.soreness, rec.note]
+    );
+  } else {
+    const list = mFile(WELL_FILE); list.unshift(rec); mWrite(WELL_FILE, list.slice(0, 500));
+  }
+  return rec;
+}
+export async function listWellness() {
+  if (backend === 'postgres') {
+    const { rows } = await pool.query('SELECT id, date, sleep_hours, feel, resting_hr, soreness, note FROM wellness ORDER BY date DESC NULLS LAST, created_at DESC LIMIT 200');
+    return rows.map((r) => ({ ...r, date: r.date ? new Date(r.date).toISOString() : null }));
+  }
+  return mFile(WELL_FILE);
+}
+
+// ---- cíle / závody (zápis přes parťák-chat) ----
+const GOALS_FILE = path.join(DATA_DIR, 'goals.json');
+
+export async function addGoal({ title, date, sport = null }) {
+  const rec = { id: newId(), title: String(title || 'Závod'), date: validDate(date), sport: sport ? String(sport) : null };
+  if (backend === 'postgres') {
+    await pool.query('INSERT INTO goals (id, title, date, sport) VALUES ($1,$2,$3,$4)', [rec.id, rec.title, rec.date, rec.sport]);
+  } else {
+    const list = mFile(GOALS_FILE); list.unshift(rec); mWrite(GOALS_FILE, list.slice(0, 100));
+  }
+  return rec;
+}
+export async function listGoals() {
+  if (backend === 'postgres') {
+    const { rows } = await pool.query('SELECT id, title, date, sport FROM goals ORDER BY date ASC NULLS LAST LIMIT 100');
+    return rows.map((r) => ({ ...r, date: r.date ? new Date(r.date).toISOString() : null }));
+  }
+  return mFile(GOALS_FILE).slice().sort((a, b) => String(a.date).localeCompare(String(b.date)));
+}
+export async function deleteGoals() {
+  if (backend === 'postgres') { await pool.query('DELETE FROM goals'); }
+  else { mWrite(GOALS_FILE, []); }
+}
+
+// ---- zdravotní stav: nemoc / bolístka (jeden aktuální stav přes settings) ----
+export async function setHealth(status) {
+  return setSetting('health', status);
+}
+export async function getHealth() {
+  return getSetting('health');
 }
 
 // ---- úprava aktivity (tag „závod", poznámka) ----

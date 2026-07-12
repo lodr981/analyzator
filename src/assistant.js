@@ -4,7 +4,7 @@
 // jen kompaktní přehled, ne celá data.
 
 import Anthropic from '@anthropic-ai/sdk';
-import { addMeasurement, addNutrition, updateActivity, markRoutineDone } from './db.js';
+import { addMeasurement, addNutrition, updateActivity, markRoutineDone, addWellness, addGoal, deleteGoals, setHealth } from './db.js';
 import { ROUTINE_IDS } from './routine.js';
 
 export function assistantEnabled() {
@@ -27,8 +27,18 @@ DŮLEŽITÉ — máš nástroje a MUSÍŠ je použít HNED, jakmile Oliver uvede
 - log_nutrition: co jedl/pil. Spouštěče: "k obědu/snídani/svačině…", "dal jsem si", "snědl jsem".
 - tag_activity: upřesnění aktivity (že to byl závod) nebo poznámka. activity_id z kontextu.
 - check_routine: "odcvičil jsem", "hotová rutina". Bez upřesnění odškrtni celou rutinu; jen část → jen ta id.
+- log_sleep: kolik a jak SPAL. Spouštěče: "spal jsem 8 hodin", "vyspal jsem se blbě", "spánek 6 h". quality vezmi z popisu (super/dobrý/špatný), když ho zmíní.
+- log_readiness: RANNÍ POCIT, klidový tep a/nebo SVALOVKA. Spouštěče: "cítím se na 4 z 5", "jsem rozlámaný", "ráno mám tep 52", "klidovka 55", "mám svalovku", "bolí mě nohy z tréninku". feel i soreness převeď na škálu 1–5 (feel 1 = úplně mrtvý, 5 = svěží; soreness 1 = žádná svalovka, 5 = hrozná).
+- log_health: NEMOC nebo BOLÍSTKA/zranění. Spouštěče: "je mi blbě", "mám rýmu/teplotu" (status "nemoc"), "bolí koleno/záda" (status "zranění"). Když napíše, že je zase fit ("jsem v pohodě", "zdravý"), zavolej s status "ok".
+- set_goal: CÍL / ZÁVOD s datem. Spouštěče: "22. 8. mám cyklokros v Táboře", "za 3 týdny závod". date jako ISO (YYYY-MM-DD). sport podle disciplíny, když ji zmíní.
 
-Rozlišuj jednotky: kg = váha (log_weight), cm = výška (log_height). Po zápisu to krátce lidsky potvrď (např. "Zapsáno, 165 cm 📏").
+Rozlišuj jednotky: kg = váha (log_weight), cm = výška (log_height), h = spánek (log_sleep), tep/bpm ráno = klidový tep (log_readiness). Po zápisu to krátce lidsky potvrď (např. "Zapsáno, 165 cm 📏").
+Když Oliver hlásí spánek/pocit/tep/svalovku/jídlo/nemoc/závod, VŽDY to zapiš nástrojem — počítá se to do jeho „připravenosti dne" a do doporučení.
+
+REGENERACE A STRAVA JSOU PRIORITA. Trénink roste z odpočinku a jídla, ne jen z dřiny.
+- Aktivně a nenásilně se zajímej o spánek, svalovku, pocit a jídlo. Když z KONTEXTU vidíš, že dnes chybí spánek nebo jídlo, na konci odpovědi se lehce zeptej (jednou, jako kámoš — ne výslech): "Mimochodem, jak jsi dneska spal?" nebo "A dal sis něco pořádného po tréninku?".
+- Raď ke stravě konkrétně (bílkoviny po tréninku, sacharidy před kvalitou, pití), ke spánku (9 h je pro tebe zlato) a k regeneraci (protažení, lehký den, když je svalovka nebo zvýšený klidový tep).
+- Když je připravenost nízká nebo velká svalovka/nemoc, jasně řekni, ať to nehrotí — regenerace teď udělá víc než trénink.
 
 Vyznáš se v cyklistice napříč disciplínami — silnice, XCO (MTB kros), cyklokros i enduro/gravity — a znáš současnou špičku. Umíš Olivera motivovat srovnáním s profíky ("i ti nejlepší makají na core").
 Když se ptá na AKTUÁLNÍ dění (kdo vyhrál, výsledky, závody, přestupy, novinky), POUŽIJ nástroj web_search a odpověz z čerstvých zdrojů — nikdy si výsledky nevymýšlej. Když si nejsi jistý aktuálností, radši si to vyhledej.
@@ -97,6 +107,57 @@ const TOOLS = [
       },
     },
   },
+  {
+    name: 'log_sleep',
+    description: 'Zapiš, kolik Oliver spal (hodiny) a případně kvalitu. Použij, když zmíní spánek.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        hours: { type: 'number', description: 'Délka spánku v hodinách.' },
+        quality: { type: 'string', description: 'Volitelně kvalita: super / dobrý / špatný.' },
+        date: { type: 'string', description: 'ISO datum; vynech pro dnešek.' },
+      },
+      required: ['hours'],
+    },
+  },
+  {
+    name: 'log_readiness',
+    description: 'Zapiš signály regenerace: ranní pocit (1–5), klidový tep (bpm) a/nebo svalovku (1–5). Použij, když Oliver řekne, jak se cítí, jaký má ranní tep nebo jestli má svalovku.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        feel: { type: 'integer', description: 'Pocit 1 (mrtvý) až 5 (svěží).' },
+        resting_hr: { type: 'integer', description: 'Ranní klidový tep v bpm.' },
+        soreness: { type: 'integer', description: 'Svalovka 1 (žádná) až 5 (hrozná, sotva chodí).' },
+        date: { type: 'string', description: 'ISO datum; vynech pro dnešek.' },
+      },
+    },
+  },
+  {
+    name: 'log_health',
+    description: 'Nastav zdravotní stav: nemoc, zranění/bolístka, nebo návrat do formy (ok). Použij, když Oliver hlásí, že je nemocný, něco ho bolí, nebo že je zase fit.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        status: { type: 'string', enum: ['nemoc', 'zranění', 'ok'], description: 'Typ stavu.' },
+        note: { type: 'string', description: 'Krátký popis (co bolí, jak dlouho apod.).' },
+      },
+      required: ['status'],
+    },
+  },
+  {
+    name: 'set_goal',
+    description: 'Ulož cíl / závod s datem, aby appka ukázala odpočet a počítala s ním v plánu.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        title: { type: 'string', description: 'Název závodu/cíle (např. "Cyklokros Tábor").' },
+        date: { type: 'string', description: 'ISO datum závodu (YYYY-MM-DD).' },
+        sport: { type: 'string', description: 'Disciplína, když ji zmíní (silnice/XCO/cyklokros/enduro…).' },
+      },
+      required: ['title', 'date'],
+    },
+  },
   // Server tool: aktuální cyklo dění (výsledky, závody, novinky) — běží na straně Anthropicu.
   { type: 'web_search_20260209', name: 'web_search', max_uses: 3 },
 ];
@@ -126,6 +187,28 @@ async function runTool(name, input) {
       const ids = input.exercise_ids?.length ? input.exercise_ids : ROUTINE_IDS;
       const done = await markRoutineDone(ids);
       return `Odškrtnuto ${ids.length} cviků (dnes hotovo ${done.length}/${ROUTINE_IDS.length}).`;
+    }
+    if (name === 'log_sleep') {
+      const note = input.quality ? `spánek: ${input.quality}` : null;
+      const rec = await addWellness({ sleep_hours: input.hours, note, date: input.date });
+      return `Zapsáno: spánek ${rec.sleep_hours} h.`;
+    }
+    if (name === 'log_readiness') {
+      if (input.feel == null && input.resting_hr == null && input.soreness == null) return 'Chybí pocit, tep i svalovka — nezapisuji.';
+      const rec = await addWellness({ feel: input.feel, resting_hr: input.resting_hr, soreness: input.soreness, date: input.date });
+      const parts = [];
+      if (rec.feel != null) parts.push(`pocit ${rec.feel}/5`);
+      if (rec.resting_hr != null) parts.push(`klidový tep ${rec.resting_hr}`);
+      if (rec.soreness != null) parts.push(`svalovka ${rec.soreness}/5`);
+      return `Zapsáno: ${parts.join(', ')}.`;
+    }
+    if (name === 'log_health') {
+      await setHealth({ status: input.status, note: input.note || null, date: new Date().toISOString() });
+      return input.status === 'ok' ? 'Zdravotní stav: zpátky ve formě.' : `Zapsáno: ${input.status}${input.note ? ' (' + input.note + ')' : ''}.`;
+    }
+    if (name === 'set_goal') {
+      const rec = await addGoal({ title: input.title, date: input.date, sport: input.sport });
+      return rec.date ? `Cíl uložen: ${rec.title} (${rec.date.slice(0, 10)}).` : 'Cíl uložen, ale nerozpoznal jsem datum.';
     }
     return 'Neznámý nástroj.';
   } catch (err) {

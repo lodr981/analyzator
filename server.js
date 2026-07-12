@@ -8,6 +8,7 @@ import { evaluate, sportLabel, sportIcon, fmtDuration } from './src/coach.js';
 import { aiEnabled, generateCoachComment } from './src/aiCoach.js';
 import { generatePlan, planAiEnabled } from './src/aiPlan.js';
 import { computeForm } from './src/form.js';
+import { computeReadiness } from './src/readiness.js';
 import { generateReply, assistantEnabled } from './src/assistant.js';
 import { ROUTINE, routineDigest } from './src/routine.js';
 import { computeAchievements } from './src/achievements.js';
@@ -16,8 +17,20 @@ import { dailyReminderCheck } from './src/reminders.js';
 import {
   initDb, dbBackend, dbInfo, addActivity, listActivities, deleteActivity, findByFingerprint,
   getPlan, savePlan, getChat, saveChat, listMeasurements, listNutrition, getRoutine, saveRoutine,
-  addPushSub,
+  addPushSub, listWellness, listGoals, getHealth,
 } from './src/db.js';
+
+// Nejbližší budoucí závod + počet dní do něj (z cílů zadaných v chatu).
+function nextGoal(goals) {
+  const now = Date.now();
+  const upcoming = (goals || [])
+    .filter((g) => g.date && new Date(g.date).getTime() >= now - 12 * 3600 * 1000)
+    .sort((a, b) => new Date(a.date) - new Date(b.date));
+  if (!upcoming.length) return null;
+  const g = upcoming[0];
+  const days = Math.ceil((new Date(g.date).getTime() - now) / (24 * 3600 * 1000));
+  return { ...g, days: Math.max(0, days) };
+}
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -165,6 +178,34 @@ app.get('/api/form', async (_req, res) => {
   }
 });
 
+// ---- Připravenost dne (forma + spánek + pocit + tep + zdraví) ----
+app.get('/api/readiness', async (_req, res) => {
+  try {
+    const [acts, wellness, health] = await Promise.all([
+      listActivities().catch(() => []),
+      listWellness().catch(() => []),
+      getHealth().catch(() => null),
+    ]);
+    let form = null;
+    try { form = computeForm(acts); } catch {}
+    res.json(computeReadiness({ form, wellness, health }));
+  } catch (err) {
+    console.error('readiness error:', err.message);
+    res.status(500).json({ error: 'Nepodařilo se spočítat připravenost.' });
+  }
+});
+
+// ---- Cíle / závody (zápis přes parťák-chat, tady jen čtení) ----
+app.get('/api/goals', async (_req, res) => {
+  try {
+    const goals = await listGoals();
+    res.json({ goals, next: nextGoal(goals) });
+  } catch (err) {
+    console.error('goals error:', err.message);
+    res.status(500).json({ error: 'Nepodařilo se načíst cíle.' });
+  }
+});
+
 // ---- Tělo: váha & výživa (zápis přes parťák-chat, tady jen čtení) ----
 app.get('/api/body', async (_req, res) => {
   try {
@@ -187,12 +228,15 @@ const shortDate = (iso) => {
 
 // Sestaví kompaktní kontext pro AI (ekonomicky — jen to podstatné).
 async function buildDigest() {
-  const [acts, planState, meas, nutr, routineState] = await Promise.all([
+  const [acts, planState, meas, nutr, routineState, wellness, goals, health] = await Promise.all([
     listActivities().catch(() => []),
     getPlan().catch(() => null),
     listMeasurements().catch(() => []),
     listNutrition().catch(() => []),
     getRoutine().catch(() => ({})),
+    listWellness().catch(() => []),
+    listGoals().catch(() => []),
+    getHealth().catch(() => null),
   ]);
 
   const lines = [`Dnes: ${new Date().toISOString().slice(0, 10)}`];
@@ -220,10 +264,38 @@ async function buildDigest() {
     for (const d of planState.plan.days) lines.push(`  ${d.day}: ${d.title} — ${d.detail}`);
   }
 
+  let form = null;
   try {
-    const f = computeForm(acts);
-    if (!f.empty) lines.push(`\nForma: kondice ${f.fitness}, únava ${f.fatigue}, forma ${f.form} (${f.trend})`);
+    form = computeForm(acts);
+    if (!form.empty) lines.push(`\nForma: kondice ${form.fitness}, únava ${form.fatigue}, forma ${form.form} (${form.trend})`);
   } catch {}
+
+  // wellness: spánek, ranní pocit, klidový tep
+  if (wellness.length) {
+    const sleep = wellness.find((w) => w.sleep_hours != null);
+    const feel = wellness.find((w) => w.feel != null);
+    const rhr = wellness.find((w) => w.resting_hr != null);
+    const sore = wellness.find((w) => w.soreness != null);
+    const parts = [];
+    if (sleep) parts.push(`spánek ${sleep.sleep_hours} h (${shortDate(sleep.date)})`);
+    if (feel) parts.push(`pocit ${feel.feel}/5`);
+    if (sore) parts.push(`svalovka ${sore.soreness}/5`);
+    if (rhr) parts.push(`klidový tep ${rhr.resting_hr}`);
+    if (parts.length) lines.push('\nWellness: ' + parts.join(', '));
+  }
+  if (health?.status && health.status !== 'ok') {
+    lines.push(`Zdraví: ${health.status}${health.note ? ' — ' + health.note : ''} (${shortDate(health.date)})`);
+  }
+
+  // připravenost dne
+  try {
+    const r = computeReadiness({ form, wellness, health });
+    if (!r.empty) lines.push(`Připravenost dne: ${r.score}/100 — ${r.band.label}`);
+  } catch {}
+
+  // cíle / závody s odpočtem
+  const ng = nextGoal(goals);
+  if (ng) lines.push(`\nDalší závod: ${ng.title}${ng.sport ? ' (' + ng.sport + ')' : ''} — za ${ng.days} dní (${String(ng.date).slice(0, 10)})`);
 
   if (meas.length) {
     const w = meas.filter((m) => m.weight_kg != null).slice(0, 4);
