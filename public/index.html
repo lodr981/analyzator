@@ -14,7 +14,7 @@
   <meta name="apple-mobile-web-app-title" content="TEMPO" />
   <meta name="mobile-web-app-capable" content="yes" />
 
-  <link rel="stylesheet" href="/styles.css?v=25" />
+  <link rel="stylesheet" href="/styles.css?v=26" />
 </head>
 <body>
   <div class="app">
@@ -231,7 +231,13 @@
       </div>
 
       <div class="card" id="nutritionCard" style="display:none">
-        <div class="lbl" style="margin-bottom:8px">Výživa — poslední záznamy</div>
+        <div class="lbl" style="margin-bottom:12px">Strava dnes 🍽️</div>
+        <div class="nutBars">
+          <div class="nutRow"><span class="nutName">Bílkoviny</span><div class="nutTrack"><div class="nutFill" id="nutProteinFill"></div></div><span class="nutLvl" id="nutProteinLvl"></span></div>
+          <div class="nutRow"><span class="nutName">Sacharidy</span><div class="nutTrack"><div class="nutFill" id="nutCarbFill"></div></div><span class="nutLvl" id="nutCarbLvl"></span></div>
+        </div>
+        <div class="nutTip" id="nutTip"></div>
+        <div class="lbl" style="margin:16px 0 8px;font-size:11px">Poslední jídla</div>
         <div id="nutritionBody"></div>
       </div>
 
@@ -298,7 +304,7 @@
     </nav>
   </div>
 
-  <script src="/story.js?v=25"></script>
-  <script src="/app.js?v=25"></script>
+  <script src="/story.js?v=26"></script>
+  <script src="/app.js?v=26"></script>
 </body>
 </html>

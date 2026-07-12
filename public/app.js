@@ -597,10 +597,31 @@ async function renderBody() {
   const nc = $('nutritionCard');
   if (n.length) {
     nc.style.display = '';
+    renderNutrition(body.nutritionSummary);
     $('nutritionBody').innerHTML = n.map((e) =>
       `<div style="display:flex;gap:9px;font-size:13px;padding:5px 0;border-bottom:1px solid var(--line)"><span style="color:var(--ink-3);font-weight:700;flex:0 0 auto;min-width:42px">${fmtDay(e.date)}</span><span>${esc(e.text)}</span></div>`
     ).join('');
   } else nc.style.display = 'none';
+}
+
+// úroveň stravy → šířka a barva ukazatele
+function nutLevel(lvl) {
+  if (lvl === 'vysoká') return { w: 100, c: 'var(--volt)' };
+  if (lvl === 'střední') return { w: 66, c: 'var(--cyan)' };
+  return { w: 33, c: 'var(--amber)' };
+}
+function renderNutrition(sum) {
+  if (!sum) return;
+  const p = nutLevel(sum.protein), c = nutLevel(sum.carbs);
+  $('nutProteinFill').style.width = p.w + '%';
+  $('nutProteinFill').style.background = p.c;
+  $('nutProteinLvl').textContent = sum.protein;
+  $('nutProteinLvl').style.color = p.c;
+  $('nutCarbFill').style.width = c.w + '%';
+  $('nutCarbFill').style.background = c.c;
+  $('nutCarbLvl').textContent = sum.carbs;
+  $('nutCarbLvl').style.color = c.c;
+  $('nutTip').innerHTML = (sum.tips || []).map((t) => `<div class="nutTipLine">${esc(t)}</div>`).join('');
 }
 
 function fmtDay(iso) {

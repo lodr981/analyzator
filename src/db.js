@@ -353,11 +353,11 @@ const mFile = (f) => { try { return JSON.parse(fs.readFileSync(f, 'utf8')); } ca
 const mWrite = (f, list) => { fs.mkdirSync(DATA_DIR, { recursive: true }); fs.writeFileSync(f, JSON.stringify(list)); };
 
 export async function addMeasurement({ weight_kg = null, height_cm = null, date = null }) {
-  const rec = { id: newId(), date: validDate(date) || new Date().toISOString(), weight_kg, height_cm };
+  const rec = { id: newId(), date: validDate(date) || new Date().toISOString(), weight_kg: asNum(weight_kg), height_cm: asNum(height_cm) };
   if (backend === 'postgres') {
     await pool.query(
       'INSERT INTO measurements (id, date, weight_kg, height_cm) VALUES ($1,$2,$3,$4)',
-      [rec.id, rec.date, weight_kg, height_cm]
+      [rec.id, rec.date, rec.weight_kg, rec.height_cm]
     );
   } else {
     const list = mFile(MEAS_FILE); list.unshift(rec); mWrite(MEAS_FILE, list.slice(0, 500));

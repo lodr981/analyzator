@@ -9,6 +9,8 @@ import { aiEnabled, generateCoachComment } from './src/aiCoach.js';
 import { generatePlan, planAiEnabled } from './src/aiPlan.js';
 import { computeForm } from './src/form.js';
 import { computeReadiness } from './src/readiness.js';
+import { scoreNutrition } from './src/nutrition.js';
+import { parseMetrics } from './src/metrics.js';
 import { generateReply, assistantEnabled } from './src/assistant.js';
 import { ROUTINE, routineDigest } from './src/routine.js';
 import { computeAchievements } from './src/achievements.js';
@@ -17,8 +19,33 @@ import { dailyReminderCheck } from './src/reminders.js';
 import {
   initDb, dbBackend, dbInfo, addActivity, listActivities, deleteActivity, findByFingerprint,
   getPlan, savePlan, getChat, saveChat, listMeasurements, listNutrition, getRoutine, saveRoutine,
-  addPushSub, listWellness, listGoals, getHealth,
+  addPushSub, listWellness, listGoals, getHealth, addMeasurement, addWellness,
 } from './src/db.js';
+
+// Deterministický záchyt výšky/váhy/spánku z Oliverovy zprávy — pojistka, aby
+// se to zapsalo i když to AI mine (nebo když AI neběží). Zapíše jen to, co
+// dnešek ještě nemá (nezdvojuje se s tím, co už zapsala AI).
+async function fallbackLogMetrics(message) {
+  const parsed = parseMetrics(message);
+  if (!parsed.height_cm && !parsed.weight_kg && !parsed.sleep_hours) return [];
+  const today = new Date().toISOString().slice(0, 10);
+  const [meas, well] = await Promise.all([listMeasurements().catch(() => []), listWellness().catch(() => [])]);
+  const hasToday = (list, field) => list.some((r) => String(r.date || '').slice(0, 10) === today && r[field] != null);
+  const done = [];
+  if (parsed.height_cm != null && !hasToday(meas, 'height_cm')) {
+    await addMeasurement({ height_cm: parsed.height_cm });
+    done.push(`výška ${parsed.height_cm} cm`);
+  }
+  if (parsed.weight_kg != null && !hasToday(meas, 'weight_kg')) {
+    await addMeasurement({ weight_kg: parsed.weight_kg });
+    done.push(`váha ${parsed.weight_kg} kg`);
+  }
+  if (parsed.sleep_hours != null && !hasToday(well, 'sleep_hours')) {
+    await addWellness({ sleep_hours: parsed.sleep_hours });
+    done.push(`spánek ${parsed.sleep_hours} h`);
+  }
+  return done;
+}
 
 // Nejbližší budoucí závod + počet dní do něj (z cílů zadaných v chatu).
 function nextGoal(goals) {
@@ -212,7 +239,7 @@ app.get('/api/body', async (_req, res) => {
     const [meas, nutr] = await Promise.all([listMeasurements(), listNutrition()]);
     const weights = meas.filter((m) => m.weight_kg != null).map((m) => ({ date: m.date, weight_kg: m.weight_kg }));
     const heights = meas.filter((m) => m.height_cm != null).map((m) => ({ date: m.date, height_cm: m.height_cm }));
-    res.json({ weights, heights, nutrition: nutr.slice(0, 12) });
+    res.json({ weights, heights, nutrition: nutr.slice(0, 12), nutritionSummary: scoreNutrition(nutr) });
   } catch (err) {
     console.error('body error:', err.message);
     res.status(500).json({ error: 'Nepodařilo se načíst data těla.' });
@@ -307,6 +334,10 @@ async function buildDigest() {
     lines.push('\nVýživa (poslední):');
     for (const n of nutr.slice(0, 5)) lines.push(`  ${shortDate(n.date)}: ${n.text}`);
   }
+  try {
+    const ns = scoreNutrition(nutr);
+    lines.push(`Strava dnes: bílkoviny ${ns.protein}, sacharidy ${ns.carbs}${ns.hasToday ? '' : ' (dnes zatím nic nezapsáno)'}`);
+  } catch {}
 
   lines.push('\n' + routineDigest(routineState[todayKey()] || []));
 
@@ -331,8 +362,15 @@ app.post('/api/chat/message', async (req, res) => {
     const digest = await buildDigest();
     const { text } = await generateReply({ message, history: state.messages, digest });
 
+    // pojistka: zapiš výšku/váhu/spánek, i kdyby to AI minula
+    let reply = text;
+    try {
+      const logged = await fallbackLogMetrics(message);
+      if (logged.length) reply += `\n\n✅ Zapsal jsem: ${logged.join(', ')}.`;
+    } catch (e) { console.error('fallback metrics error:', e.message); }
+
     state.messages.push({ role: 'user', text: message, ts: Date.now() });
-    state.messages.push({ role: 'ai', text, ts: Date.now() });
+    state.messages.push({ role: 'ai', text: reply, ts: Date.now() });
     state.messages = state.messages.slice(-40);
     await saveChat(state);
     res.json({ ...state, aiEnabled: assistantEnabled() });

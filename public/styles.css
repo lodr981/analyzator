@@ -247,6 +247,16 @@ input[type=file]{display:none}
 .readyHint{display:block;width:100%;text-align:left;background:var(--surf-2);border:1px dashed var(--line);border-radius:14px;padding:14px;color:var(--ink-2);font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;line-height:1.45}
 .readyHint b{color:var(--ink)}
 
+/* ===== Strava (bílkoviny / sacharidy) ===== */
+.nutBars{display:flex;flex-direction:column;gap:11px}
+.nutRow{display:flex;align-items:center;gap:10px}
+.nutName{flex:0 0 78px;font-size:13px;font-weight:700;color:var(--ink-2)}
+.nutTrack{flex:1;height:10px;border-radius:999px;background:var(--surf-2);overflow:hidden}
+.nutFill{height:100%;border-radius:999px;background:var(--cyan);width:33%;transition:width .3s}
+.nutLvl{flex:0 0 auto;font-size:12px;font-weight:800;min-width:52px;text-align:right}
+.nutTip{margin-top:12px;display:flex;flex-direction:column;gap:6px}
+.nutTipLine{font-size:12.5px;color:var(--ink-2);line-height:1.45;background:var(--surf-2);border-radius:12px;padding:9px 12px}
+
 /* ===== Kalendář konzistence ===== */
 .calWrap{overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:2px}
 .calGrid{display:grid;grid-auto-flow:column;grid-template-rows:repeat(7,14px);gap:3px;width:max-content}
