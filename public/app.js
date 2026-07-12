@@ -429,6 +429,68 @@ async function renderForm() {
   $('formAdvice').textContent = data.advice;
 }
 
+// Jednoduchý spojnicový graf (SVG) — jedna série, sdílená časová osa přes `domain`.
+function lineChartSVG(pts, domain, color) {
+  const W = 620, H = 200, padX = 40, padTop = 42, padBot = 30;
+  if (!pts.length) return '';
+  const xmin = domain ? domain[0] : Math.min(...pts.map((p) => p.t));
+  const xmax = domain ? domain[1] : Math.max(...pts.map((p) => p.t));
+  const vals = pts.map((p) => p.v);
+  let vmin = Math.min(...vals), vmax = Math.max(...vals);
+  if (vmin === vmax) { vmin -= 1; vmax += 1; }
+  const pad = (vmax - vmin) * 0.22; vmin -= pad; vmax += pad;
+  const X = (t) => padX + (xmax === xmin ? (W - 2 * padX) / 2 : ((t - xmin) / (xmax - xmin)) * (W - 2 * padX));
+  const Y = (v) => padTop + (1 - (v - vmin) / (vmax - vmin)) * (H - padTop - padBot);
+  const P = pts.map((p) => [X(p.t), Y(p.v)]);
+  const id = 'g' + Math.random().toString(36).slice(2, 8);
+
+  const line = P.map(([x, y], i) => (i ? 'L' : 'M') + x.toFixed(1) + ' ' + y.toFixed(1)).join(' ');
+  const area = `M${P[0][0].toFixed(1)} ${H - padBot} ` +
+    P.map(([x, y]) => `L${x.toFixed(1)} ${y.toFixed(1)}`).join(' ') +
+    ` L${P[P.length - 1][0].toFixed(1)} ${H - padBot} Z`;
+
+  const dots = P.map(([x, y], i) => {
+    const last = i === P.length - 1;
+    return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${last ? 8 : 5}" fill="${last ? color : '#0C0A16'}" stroke="${color}" stroke-width="${last ? 3 : 3}"/>`;
+  }).join('');
+
+  // popisky hodnot: první (tlumeně) a poslední (barevně)
+  const labelPt = (idx, col, weight) => {
+    const [x, y] = P[idx];
+    const anchor = x < padX + 30 ? 'start' : x > W - padX - 30 ? 'end' : 'middle';
+    return `<text x="${x.toFixed(1)}" y="${(y - 18).toFixed(1)}" fill="${col}" font-size="26" font-weight="${weight}" text-anchor="${anchor}" font-family="system-ui,-apple-system,sans-serif">${pts[idx].v}</text>`;
+  };
+  const labels = P.length > 1
+    ? labelPt(0, 'rgba(255,255,255,.45)', 700) + labelPt(P.length - 1, color, 800)
+    : labelPt(0, color, 800);
+
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" preserveAspectRatio="xMidYMid meet" role="img">
+    <defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="${color}" stop-opacity="0.28"/>
+      <stop offset="1" stop-color="${color}" stop-opacity="0"/>
+    </linearGradient></defs>
+    <path d="${area}" fill="url(#${id})"/>
+    <path d="${line}" fill="none" stroke="${color}" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    ${dots}${labels}
+  </svg>`;
+}
+
+function renderGrowthSeries(secId, chartId, latestId, changeId, chrono, domain, opt) {
+  const sec = $(secId);
+  if (!chrono.length) { sec.style.display = 'none'; return; }
+  sec.style.display = '';
+  const latest = chrono[chrono.length - 1].v;
+  const oldest = chrono[0].v;
+  $(latestId).textContent = latest;
+  const diff = +(latest - oldest).toFixed(1);
+  const ch = $(changeId);
+  if (chrono.length > 1 && diff !== 0) {
+    ch.textContent = (diff > 0 ? '▲ +' : '▼ ') + Math.abs(diff) + ' ' + opt.unit;
+    ch.style.color = diff > 0 ? opt.deltaUp : opt.deltaDown;
+  } else ch.textContent = '';
+  $(chartId).innerHTML = lineChartSVG(chrono, domain, opt.color);
+}
+
 // váha & výživa (zápis přes parťáka; tady jen přehled)
 async function renderBody() {
   let body;
@@ -436,45 +498,22 @@ async function renderBody() {
 
   const w = (body.weights || []); // nejnovější první
   const h = (body.heights || []);
-  const wc = $('weightCard');
+  const wc = $('growthCard');
   wc.style.display = (w.length || h.length) ? '' : 'none';
 
-  // výška
-  const hl = $('heightLine');
-  if (h.length) {
-    hl.style.display = '';
-    $('heightLatest').textContent = h[0].height_cm + ' cm';
-    const hOldest = h[h.length - 1].height_cm;
-    const hDiff = +(h[0].height_cm - hOldest).toFixed(1);
-    const hc = $('heightChange');
-    if (h.length > 1 && hDiff !== 0) { hc.textContent = (hDiff > 0 ? '▲ +' : '▼ ') + hDiff + ' cm'; hc.style.color = 'var(--volt)'; }
-    else hc.textContent = '';
-  } else hl.style.display = 'none';
+  // společná časová osa, ať jsou oba grafy zarovnané pod sebou
+  const allDates = [...w, ...h].map((x) => +new Date(x.date)).filter((t) => !isNaN(t));
+  const domain = allDates.length ? [Math.min(...allDates), Math.max(...allDates)] : null;
 
-  // váha (blok se skryje, když není váha; karta zůstane kvůli výšce)
-  $('weightBlock').style.display = w.length ? '' : 'none';
-  $('heightLine').style.borderTop = w.length && h.length ? '1px solid var(--line)' : 'none';
-  $('heightLine').style.paddingTop = w.length && h.length ? '12px' : '0';
-  if (w.length) {
-    $('weightLatest').textContent = w[0].weight_kg;
-    $('weightDate').textContent = fmtDate(w[0].date);
-    const oldest = w[w.length - 1].weight_kg;
-    const diff = +(w[0].weight_kg - oldest).toFixed(1);
-    const ch = $('weightChange');
-    if (w.length > 1 && diff !== 0) {
-      ch.textContent = (diff > 0 ? '▲ +' : '▼ ') + diff + ' kg';
-      ch.style.color = diff > 0 ? 'var(--volt)' : 'var(--cyan)';
-    } else ch.textContent = '';
+  // výška (chronologicky, nejstarší → nejnovější)
+  const hChrono = h.slice().reverse().map((x) => ({ t: +new Date(x.date), v: x.height_cm }));
+  renderGrowthSeries('heightSec', 'heightChart', 'heightLatest', 'heightChange',
+    hChrono, domain, { color: '#3DE0FF', unit: 'cm', deltaUp: 'var(--volt)', deltaDown: 'var(--ink-2)' });
 
-    const chrono = w.slice(0, 8).reverse();
-    const vals = chrono.map((x) => x.weight_kg);
-    const min = Math.min(...vals), max = Math.max(...vals);
-    $('weightBars').innerHTML = chrono.map((x, i) => {
-      const bh = max === min ? 60 : Math.round(20 + ((x.weight_kg - min) / (max - min)) * 80);
-      const cur = i === chrono.length - 1 ? 'cur' : '';
-      return `<div class="lb ${cur}"><div class="v">${x.weight_kg}</div><div class="col" style="height:${bh}%"></div><div class="d">${fmtDay(x.date)}</div></div>`;
-    }).join('');
-  }
+  // váha
+  const wChrono = w.slice().reverse().map((x) => ({ t: +new Date(x.date), v: x.weight_kg }));
+  renderGrowthSeries('weightSec', 'weightChart', 'weightLatest', 'weightChange',
+    wChrono, domain, { color: '#FF4D8D', unit: 'kg', deltaUp: 'var(--ink-2)', deltaDown: 'var(--cyan)' });
 
   const n = (body.nutrition || []);
   const nc = $('nutritionCard');

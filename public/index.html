@@ -14,7 +14,7 @@
   <meta name="apple-mobile-web-app-title" content="TEMPO" />
   <meta name="mobile-web-app-capable" content="yes" />
 
-  <link rel="stylesheet" href="/styles.css?v=23" />
+  <link rel="stylesheet" href="/styles.css?v=24" />
 </head>
 <body>
   <div class="app">
@@ -172,20 +172,25 @@
         </div>
       </div>
 
-      <div class="card" id="weightCard" style="display:none">
-        <div id="weightBlock">
-          <div style="display:flex;justify-content:space-between;align-items:baseline">
-            <div class="lbl">Váha</div>
-            <div id="weightChange" style="font-size:12px;font-weight:800"></div>
+      <div class="card" id="growthCard" style="display:none">
+        <div class="lbl">Jak rosteš 📏</div>
+        <div class="hint" style="font-size:11px;margin:2px 0 12px">Výška vs váha — jak jdeš nahoru</div>
+
+        <div class="growth-sec" id="heightSec">
+          <div class="growth-head">
+            <span class="growth-name"><i class="gdot" style="background:var(--cyan)"></i>Výška</span>
+            <span class="growth-now"><b id="heightLatest">–</b> cm <span id="heightChange" class="growth-delta"></span></span>
           </div>
-          <div style="display:flex;align-items:baseline;gap:6px;margin-top:4px">
-            <span id="weightLatest" style="font-size:30px;font-weight:800;letter-spacing:-.03em">–</span>
-            <span style="font-size:13px;font-weight:700;color:var(--ink-3)">kg</span>
-            <span id="weightDate" style="font-size:11px;color:var(--ink-3);margin-left:6px"></span>
-          </div>
-          <div class="loadbars" id="weightBars" style="height:70px;margin-top:12px"></div>
+          <div class="growth-chart" id="heightChart"></div>
         </div>
-        <div id="heightLine" style="display:none;margin-top:12px;font-size:14px">Výška: <b id="heightLatest"></b> <span id="heightChange" style="font-size:12px;font-weight:800;margin-left:6px"></span></div>
+
+        <div class="growth-sec" id="weightSec" style="margin-top:16px">
+          <div class="growth-head">
+            <span class="growth-name"><i class="gdot" style="background:var(--pink)"></i>Váha</span>
+            <span class="growth-now"><b id="weightLatest">–</b> kg <span id="weightChange" class="growth-delta"></span></span>
+          </div>
+          <div class="growth-chart" id="weightChart"></div>
+        </div>
       </div>
 
       <div class="card" id="nutritionCard" style="display:none">
@@ -256,7 +261,7 @@
     </nav>
   </div>
 
-  <script src="/story.js?v=23"></script>
-  <script src="/app.js?v=23"></script>
+  <script src="/story.js?v=24"></script>
+  <script src="/app.js?v=24"></script>
 </body>
 </html>

@@ -221,6 +221,17 @@ input[type=file]{display:none}
 .loadbars .lb .v{font-size:10px;color:var(--ink-2);font-weight:700;font-variant-numeric:tabular-nums}
 .loadbars .lb .d{font-size:10px;color:var(--ink-3);font-weight:700}
 
+/* ===== RŮST (výška vs váha) ===== */
+.growth-sec{}
+.growth-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:2px}
+.growth-name{display:flex;align-items:center;gap:7px;font-weight:800;font-size:14px;color:var(--ink)}
+.growth-name .gdot{width:10px;height:10px;border-radius:50%;display:inline-block}
+.growth-now{font-size:14px;color:var(--ink-2);font-weight:700}
+.growth-now b{font-size:22px;color:var(--ink);letter-spacing:-.02em}
+.growth-delta{font-size:12px;font-weight:800;margin-left:6px}
+.growth-chart{width:100%;margin-top:2px}
+.growth-chart svg{display:block}
+
 /* ===== STORY MODAL ===== */
 #storyModal{position:fixed;inset:0;z-index:200;background:#06050C;display:none;flex-direction:column;padding:14px;padding-top:max(14px,env(safe-area-inset-top))}
 #storyModal.open{display:flex}
