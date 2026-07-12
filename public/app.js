@@ -104,7 +104,9 @@ async function uploadFile(file) {
   }
 }
 
+let lastActivity = null;
 function render(data) {
+  lastActivity = data;
   const { summary, coach, labels } = data;
   $('title').firstChild.textContent = labels.sportIcon + ' ' + labels.sport;
   $('subtitle').textContent = fmtDate(summary.startTime);
@@ -264,6 +266,9 @@ $('askCoach').addEventListener('click', () => {
   showScreen('chat');
   chatText.value = 'Rozeber mi můj poslední trénink a porovnej ho s předchozím.';
   chatText.focus();
+});
+$('makeStory').addEventListener('click', () => {
+  if (lastActivity && window.openStory) window.openStory(lastActivity);
 });
 
 async function loadChat() {

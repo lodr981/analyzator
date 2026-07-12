@@ -93,6 +93,7 @@ input[type=file]{display:none}
 .lists .li.i .b{color:var(--amber)}
 
 .askbtn{display:block;width:100%;margin-top:8px;padding:14px;border:none;border-radius:16px;background:var(--grad-cyan);color:#06121a;font-weight:800;font-size:14px;cursor:pointer;font-family:inherit}
+.storybtn{display:block;width:100%;margin-top:8px;padding:14px;border:none;border-radius:16px;background:var(--grad);color:#fff;font-weight:800;font-size:14px;cursor:pointer;font-family:inherit}
 .again{display:block;width:100%;margin-top:8px;padding:14px;border:none;border-radius:16px;background:var(--surf);color:var(--ink);font-weight:700;font-size:14px;cursor:pointer;border:1px solid var(--line)}
 .again:hover{background:var(--surf-2)}
 
@@ -219,3 +220,16 @@ input[type=file]{display:none}
 .loadbars .lb.cur .col{background:var(--pink);opacity:1}
 .loadbars .lb .v{font-size:10px;color:var(--ink-2);font-weight:700;font-variant-numeric:tabular-nums}
 .loadbars .lb .d{font-size:10px;color:var(--ink-3);font-weight:700}
+
+/* ===== STORY MODAL ===== */
+#storyModal{position:fixed;inset:0;z-index:200;background:#06050C;display:none;flex-direction:column;padding:14px;padding-top:max(14px,env(safe-area-inset-top))}
+#storyModal.open{display:flex}
+.story-inner{flex:1;display:flex;flex-direction:column;gap:12px;min-height:0;max-width:520px;width:100%;margin:0 auto}
+#storyCanvas{flex:1;min-height:0;width:100%;object-fit:contain;border-radius:18px;background:#000;box-shadow:0 12px 40px rgba(0,0,0,.5)}
+.story-bar{display:flex;flex-direction:column;gap:12px}
+.story-bgs{display:flex;gap:8px;overflow-x:auto;padding-bottom:2px;-webkit-overflow-scrolling:touch}
+.story-bg{flex:0 0 auto;padding:10px 14px;border-radius:999px;border:1px solid var(--line);background:var(--surf);color:var(--ink-2);font-weight:700;font-size:13px;cursor:pointer;font-family:inherit;white-space:nowrap}
+.story-bg.on{background:var(--grad);color:#fff;border-color:transparent}
+.story-actions{display:flex;gap:10px}
+.story-actions .planbtn{flex:1;margin:0}
+.story-actions .again{flex:0 0 auto;width:auto;margin:0;padding:14px 20px}
