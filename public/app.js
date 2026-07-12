@@ -221,15 +221,31 @@ async function renderAchievements() {
   rc.style.display = rows.length ? '' : 'none';
   $('recordsBody').innerHTML = rows.map(([l, v]) => `<div class="rec"><span class="rl">${l}</span><span class="rv">${esc(v)}</span></div>`).join('');
 
-  // odznaky
+  // odznaky (3 úrovně: bronz / stříbro / zlato)
   const bw = $('badgesWrap');
   bw.style.display = (a.badges && a.badges.length) ? '' : 'none';
-  $('badges').innerHTML = (a.badges || []).map((b) => `
-    <div class="badge ${b.earned ? 'on' : 'off'}">
+  $('badges').innerHTML = (a.badges || []).map(badgeHtml).join('');
+}
+
+const TIER_LABEL = { gold: '🥇 EU špička', silver: '🥈 ČR špička', bronze: '🥉 Bronz' };
+const TIER_COLOR = { gold: '#FFD24D', silver: '#C7D0DE', bronze: '#E08A4D' };
+function badgeHtml(b) {
+  const tierClass = b.tier ? 'tier-' + b.tier : 'off';
+  const unit = b.unit ? ' ' + b.unit : '';
+  // spodní řádek: medaile (pokud je) + postup k další úrovni
+  let sub;
+  if (b.next == null) sub = b.tier ? TIER_LABEL[b.tier] + ' · MAX' : 'MAX';
+  else if (b.tier) sub = `${TIER_LABEL[b.tier]} · ${b.value}/${b.next}${unit}`;
+  else sub = `${b.value}/${b.next}${unit}`;
+  const barColor = b.next == null ? (TIER_COLOR[b.tier] || 'var(--volt)')
+    : (b.tier === 'silver' ? TIER_COLOR.gold : b.tier === 'bronze' ? TIER_COLOR.silver : TIER_COLOR.bronze);
+  return `
+    <div class="badge ${tierClass}">
       <div class="bic">${b.icon}</div>
       <div class="bnm">${esc(b.name)}</div>
-      <div class="bpg">${b.earned ? '✓ splněno' : b.value + '/' + b.target}</div>
-    </div>`).join('');
+      <div class="bpg">${esc(sub)}</div>
+      <div class="bbar"><i style="width:${b.pct}%;background:${barColor}"></i></div>
+    </div>`;
 }
 
 function fmtDur(sec) {
