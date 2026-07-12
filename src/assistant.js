@@ -217,8 +217,9 @@ async function runTool(name, input) {
   }
 }
 
-// message = text od Olivera; history = předchozí zprávy [{role:'user'|'ai', text}]; digest = kompaktní kontext (string)
-export async function generateReply({ message, history = [], digest = '' }) {
+// message = text od Olivera; history = předchozí zprávy [{role:'user'|'ai', text}];
+// digest = kompaktní kontext (string); memory = dlouhodobé shrnutí předchozích týdnů
+export async function generateReply({ message, history = [], digest = '', memory = '' }) {
   if (!client) {
     return { text: 'Pro chat s parťákem je potřeba zapnout AI — nastav ANTHROPIC_API_KEY.' };
   }
@@ -229,7 +230,8 @@ export async function generateReply({ message, history = [], digest = '' }) {
   }
   messages.push({ role: 'user', content: message });
 
-  const system = `${SYSTEM}\n\n=== KONTEXT (dnešek a poslední data) ===\n${digest}`;
+  const mem = memory ? `\n\n=== PAMĚŤ (shrnutí předchozích týdnů — pamatuj si to) ===\n${memory}` : '';
+  const system = `${SYSTEM}${mem}\n\n=== KONTEXT (dnešek a poslední data) ===\n${digest}`;
 
   try {
     for (let i = 0; i < 6; i++) {
@@ -270,5 +272,38 @@ export async function generateReply({ message, history = [], digest = '' }) {
   } catch (err) {
     console.error('assistant error:', err.message);
     return { text: 'Něco se pokazilo, zkus to prosím znovu.' };
+  }
+}
+
+// Týdenní kompaktace: staré zprávy shrne do krátké „paměti", ať se nemusí držet
+// celá historie. Vrací text (5–8 bodů), nebo null když se to nepovede.
+export async function summarizeChat({ messages = [], priorSummary = '' }) {
+  if (!client || !messages.length) return null;
+  const convo = messages
+    .map((m) => `${m.role === 'user' ? 'Oliver' : 'Parťák'}: ${m.text}`)
+    .join('\n')
+    .slice(0, 8000);
+
+  const sys = `Jsi asistent, který vede dlouhodobou paměť o cyklistovi Oliverovi.
+Dostaneš dosavadní PAMĚŤ a KUS KONVERZACE, který se archivuje. Slož je do jedné aktualizované paměti.
+Zachyť jen to, co má dlouhodobou cenu: opakující se témata, preference, cíle/závody, zdravotní věci a zranění, trendy nálady/spánku/regenerace, dohody a co Oliver řeší.
+Vynech jednorázové drobnosti a pozdravy. Piš česky, stručně, 5–8 odrážek. Vrať jen tu paměť, nic dalšího.`;
+
+  try {
+    const resp = await client.messages.create(
+      {
+        model: 'claude-opus-4-8',
+        max_tokens: 500,
+        system: sys,
+        output_config: { effort: 'low' },
+        messages: [{ role: 'user', content: `DOSAVADNÍ PAMĚŤ:\n${priorSummary || '(zatím žádná)'}\n\nARCHIVOVANÁ KONVERZACE:\n${convo}` }],
+      },
+      { timeout: 45000, maxRetries: 0 }
+    );
+    const text = resp.content.filter((b) => b.type === 'text').map((b) => b.text).join('\n').trim();
+    return text || null;
+  } catch (err) {
+    console.error('summarizeChat error:', err.message);
+    return null;
   }
 }

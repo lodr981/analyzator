@@ -231,6 +231,7 @@ input[type=file]{display:none}
 .loadbars .lb .d{font-size:10px;color:var(--ink-3);font-weight:700}
 
 .chiptitle{font-size:11px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-3);margin:4px 2px 8px}
+.chatmem{font-size:11px;color:var(--ink-3);text-align:center;background:var(--surf-2);border-radius:12px;padding:8px 12px;margin-bottom:12px;line-height:1.4}
 #chatChips2{margin-bottom:14px}
 
 /* ===== DOMŮ: odpočet na závod ===== */

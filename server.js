@@ -11,7 +11,7 @@ import { computeForm } from './src/form.js';
 import { computeReadiness } from './src/readiness.js';
 import { scoreNutrition } from './src/nutrition.js';
 import { parseMetrics } from './src/metrics.js';
-import { generateReply, assistantEnabled } from './src/assistant.js';
+import { generateReply, assistantEnabled, summarizeChat } from './src/assistant.js';
 import { ROUTINE, routineDigest } from './src/routine.js';
 import { computeAchievements } from './src/achievements.js';
 import { initPush, pushReady, vapidPublicKey, sendToAll } from './src/push.js';
@@ -344,10 +344,42 @@ async function buildDigest() {
   return lines.join('\n');
 }
 
+// Frontendu posíláme jen posledních pár dní zpráv — zbytek žije v „paměti".
+const CHAT_WEEK = 7 * 24 * 3600 * 1000;
+const CHAT_VISIBLE = 16; // max viditelných zpráv v UI
+function chatView(state) {
+  return {
+    messages: (state.messages || []).slice(-CHAT_VISIBLE),
+    hasMemory: Boolean(state.summary),
+    aiEnabled: assistantEnabled(),
+  };
+}
+
+// Týdenní kompaktace: zprávy starší než týden shrne do state.summary a zahodí je.
+// Poběží max jednou týdně (lastCompact). Bez AI jen ořízne (bez shrnutí).
+async function maybeCompact(state) {
+  const now = Date.now();
+  if (state.lastCompact && now - state.lastCompact < CHAT_WEEK) return false;
+  const cutoff = now - CHAT_WEEK;
+  const old = (state.messages || []).filter((m) => (m.ts || 0) < cutoff);
+  const recent = (state.messages || []).filter((m) => (m.ts || 0) >= cutoff);
+  if (old.length < 4) { // ještě není co kompaktovat — jen nastav základ
+    if (!state.lastCompact) state.lastCompact = now;
+    return false;
+  }
+  try {
+    const summary = await summarizeChat({ messages: old, priorSummary: state.summary || '' });
+    if (summary) state.summary = summary;
+  } catch (e) { console.error('compact error:', e.message); }
+  state.messages = recent;
+  state.lastCompact = now;
+  return true;
+}
+
 app.get('/api/chat', async (_req, res) => {
   try {
     const state = (await getChat()) || { messages: [] };
-    res.json({ ...state, aiEnabled: assistantEnabled() });
+    res.json(chatView(state));
   } catch (err) {
     console.error('chat get error:', err.message);
     res.status(500).json({ error: 'Nepodařilo se načíst chat.' });
@@ -359,8 +391,11 @@ app.post('/api/chat/message', async (req, res) => {
   if (!message) return res.status(400).json({ error: 'Prázdná zpráva.' });
   try {
     const state = (await getChat()) || { messages: [] };
+    // jednou týdně zkompaktuj starší zprávy do paměti
+    await maybeCompact(state);
+
     const digest = await buildDigest();
-    const { text } = await generateReply({ message, history: state.messages, digest });
+    const { text } = await generateReply({ message, history: state.messages, digest, memory: state.summary || '' });
 
     // pojistka: zapiš výšku/váhu/spánek, i kdyby to AI minula
     let reply = text;
@@ -371,9 +406,9 @@ app.post('/api/chat/message', async (req, res) => {
 
     state.messages.push({ role: 'user', text: message, ts: Date.now() });
     state.messages.push({ role: 'ai', text: reply, ts: Date.now() });
-    state.messages = state.messages.slice(-40);
+    state.messages = state.messages.slice(-60);
     await saveChat(state);
-    res.json({ ...state, aiEnabled: assistantEnabled() });
+    res.json(chatView(state));
   } catch (err) {
     console.error('chat message error:', err.message);
     res.status(500).json({ error: 'Něco se pokazilo, zkus to znovu.' });

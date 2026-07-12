@@ -341,7 +341,10 @@ async function sendChatMessage() {
 }
 
 function renderChat(state) {
-  $('chatMsgs').innerHTML = (state.messages || [])
+  const mem = state.hasMemory
+    ? '<div class="chatmem">🧠 Parťák si pamatuje i předchozí týdny — historie se drží krátká.</div>'
+    : '';
+  $('chatMsgs').innerHTML = mem + (state.messages || [])
     .map((m) => `<div class="pmsg ${m.role === 'user' ? 'user' : 'ai'}">${esc(m.text)}</div>`)
     .join('');
 }
