@@ -11,6 +11,7 @@ import { computeForm } from './src/form.js';
 import { computeReadiness } from './src/readiness.js';
 import { scoreNutrition } from './src/nutrition.js';
 import { parseMetrics } from './src/metrics.js';
+import { streamDiaryPdf, DIARY_PERIODS } from './src/diary.js';
 import { generateReply, assistantEnabled, summarizeChat } from './src/assistant.js';
 import { ROUTINE, routineDigest } from './src/routine.js';
 import { computeAchievements } from './src/achievements.js';
@@ -233,6 +234,24 @@ app.get('/api/goals', async (_req, res) => {
   }
 });
 
+// ---- Tréninkový deník (PDF) za období ----
+app.get('/api/diary', async (req, res) => {
+  const period = DIARY_PERIODS[req.query.period] ? req.query.period : 'month';
+  try {
+    const [activities, measurements, nutrition, goals, routineState] = await Promise.all([
+      listActivities().catch(() => []),
+      listMeasurements().catch(() => []),
+      listNutrition().catch(() => []),
+      listGoals().catch(() => []),
+      getRoutine().catch(() => ({})),
+    ]);
+    streamDiaryPdf(res, { activities, measurements, nutrition, goals, routineState }, period);
+  } catch (err) {
+    console.error('diary error:', err.message);
+    res.status(500).json({ error: 'Nepodařilo se vytvořit deník.' });
+  }
+});
+
 // ---- Tělo: váha & výživa (zápis přes parťák-chat, tady jen čtení) ----
 app.get('/api/body', async (_req, res) => {
   try {
@@ -395,7 +414,7 @@ app.post('/api/chat/message', async (req, res) => {
     await maybeCompact(state);
 
     const digest = await buildDigest();
-    const { text } = await generateReply({ message, history: state.messages, digest, memory: state.summary || '' });
+    const { text, diary } = await generateReply({ message, history: state.messages, digest, memory: state.summary || '' });
 
     // pojistka: zapiš výšku/váhu/spánek, i kdyby to AI minula
     let reply = text;
@@ -404,8 +423,10 @@ app.post('/api/chat/message', async (req, res) => {
       if (logged.length) reply += `\n\n✅ Zapsal jsem: ${logged.join(', ')}.`;
     } catch (e) { console.error('fallback metrics error:', e.message); }
 
+    const aiMsg = { role: 'ai', text: reply, ts: Date.now() };
+    if (diary) aiMsg.diary = diary;
     state.messages.push({ role: 'user', text: message, ts: Date.now() });
-    state.messages.push({ role: 'ai', text: reply, ts: Date.now() });
+    state.messages.push(aiMsg);
     state.messages = state.messages.slice(-60);
     await saveChat(state);
     res.json(chatView(state));

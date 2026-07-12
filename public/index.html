@@ -14,7 +14,7 @@
   <meta name="apple-mobile-web-app-title" content="TEMPO" />
   <meta name="mobile-web-app-capable" content="yes" />
 
-  <link rel="stylesheet" href="/styles.css?v=28" />
+  <link rel="stylesheet" href="/styles.css?v=29" />
 </head>
 <body>
   <div class="app">
@@ -270,6 +270,18 @@
         <div id="badges" class="badges"></div>
       </div>
 
+      <div class="card" id="diaryCard">
+        <div class="lbl" style="margin-bottom:4px">📄 Tréninkový deník (PDF)</div>
+        <div class="hint" style="font-size:11px;margin:0 0 12px;text-align:left">Stáhni si přehled se vším — aktivity, forma, tělo, strava, odznaky.</div>
+        <div class="diaryBtns">
+          <button class="diaryBtn" data-period="month">Měsíc</button>
+          <button class="diaryBtn" data-period="quarter">3 měsíce</button>
+          <button class="diaryBtn" data-period="half">Půl rok</button>
+          <button class="diaryBtn" data-period="year">Rok</button>
+          <button class="diaryBtn" data-period="all">Vše</button>
+        </div>
+      </div>
+
       <div class="lbl" id="historyHdr" style="display:none;margin:18px 2px 10px">Všechny aktivity</div>
       <div id="historyList"></div>
       <div id="historyEmpty" class="hint" style="margin-top:20px">Zatím žádné aktivity. Nahraj první! 🚴</div>
@@ -304,7 +316,7 @@
     </nav>
   </div>
 
-  <script src="/story.js?v=28"></script>
-  <script src="/app.js?v=28"></script>
+  <script src="/story.js?v=29"></script>
+  <script src="/app.js?v=29"></script>
 </body>
 </html>

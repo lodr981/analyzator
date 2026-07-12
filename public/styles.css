@@ -234,6 +234,12 @@ input[type=file]{display:none}
 .chatmem{font-size:11px;color:var(--ink-3);text-align:center;background:var(--surf-2);border-radius:12px;padding:8px 12px;margin-bottom:12px;line-height:1.4}
 #chatChips2{margin-bottom:14px}
 
+/* ===== Deník PDF ===== */
+.diaryBtns{display:flex;flex-wrap:wrap;gap:8px}
+.diaryBtn{flex:1 1 auto;min-width:70px;padding:11px 10px;border-radius:12px;border:1px solid var(--line);background:var(--surf-2);color:var(--ink);font-weight:800;font-size:13px;cursor:pointer;font-family:inherit}
+.diaryBtn:hover{border-color:var(--pink)}
+.diaryBtn.busy{opacity:.6;pointer-events:none}
+
 /* ===== DOMŮ: odpočet na závod ===== */
 .raceCard{background:linear-gradient(135deg,#7C5CFF 0%,#FF4D8D 100%);border:none}
 .raceTop{display:flex;justify-content:space-between;align-items:center;gap:10px}

@@ -159,6 +159,17 @@ const TOOLS = [
       required: ['title', 'date'],
     },
   },
+  {
+    name: 'generate_diary',
+    description: 'Připrav tréninkový deník (PDF) za období — přehled aktivit, formy, těla, stravy a odznaků. Použij, když Oliver chce deník, přehled, export nebo souhrn za měsíc / 3 měsíce / půl roku / rok / celou historii.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        period: { type: 'string', enum: ['month', 'quarter', 'half', 'year', 'all'], description: 'month=měsíc, quarter=3 měsíce, half=půl roku, year=rok, all=vše.' },
+      },
+      required: ['period'],
+    },
+  },
   // Server tool: aktuální cyklo dění (výsledky, závody, novinky) — běží na straně Anthropicu.
   { type: 'web_search_20260209', name: 'web_search', max_uses: 3 },
 ];
@@ -207,6 +218,9 @@ async function runTool(name, input) {
       await setHealth({ status: input.status, note: input.note || null, date: new Date().toISOString() });
       return input.status === 'ok' ? 'Zdravotní stav: zpátky ve formě.' : `Zapsáno: ${input.status}${input.note ? ' (' + input.note + ')' : ''}.`;
     }
+    if (name === 'generate_diary') {
+      return 'Deník je připravený — tlačítko ke stažení PDF je hned pod touhle zprávou.';
+    }
     if (name === 'set_goal') {
       const rec = await addGoal({ title: input.title, date: input.date, sport: input.sport });
       return rec.date ? `Cíl uložen: ${rec.title} (${rec.date.slice(0, 10)}).` : 'Cíl uložen, ale nerozpoznal jsem datum.';
@@ -233,6 +247,9 @@ export async function generateReply({ message, history = [], digest = '', memory
   const mem = memory ? `\n\n=== PAMĚŤ (shrnutí předchozích týdnů — pamatuj si to) ===\n${memory}` : '';
   const system = `${SYSTEM}${mem}\n\n=== KONTEXT (dnešek a poslední data) ===\n${digest}`;
 
+  const DIARY_OK = ['month', 'quarter', 'half', 'year', 'all'];
+  let diary = null;
+
   try {
     for (let i = 0; i < 6; i++) {
       const resp = await client.messages.create(
@@ -253,6 +270,9 @@ export async function generateReply({ message, history = [], digest = '', memory
         messages.push({ role: 'assistant', content: resp.content });
         const results = [];
         for (const b of customUses) {
+          if (b.name === 'generate_diary') {
+            diary = { period: DIARY_OK.includes(b.input?.period) ? b.input.period : 'month' };
+          }
           results.push({ type: 'tool_result', tool_use_id: b.id, content: await runTool(b.name, b.input) });
         }
         messages.push({ role: 'user', content: results });
@@ -266,9 +286,9 @@ export async function generateReply({ message, history = [], digest = '', memory
       }
 
       const text = resp.content.filter((b) => b.type === 'text').map((b) => b.text).join('\n').trim();
-      return { text: text || 'Hotovo.' };
+      return { text: text || 'Hotovo.', diary };
     }
-    return { text: 'Nestihl jsem to dotáhnout, zkus to prosím znovu.' };
+    return { text: 'Nestihl jsem to dotáhnout, zkus to prosím znovu.', diary };
   } catch (err) {
     console.error('assistant error:', err.message);
     return { text: 'Něco se pokazilo, zkus to prosím znovu.' };

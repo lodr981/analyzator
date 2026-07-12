@@ -299,6 +299,31 @@ $('makeStory').addEventListener('click', () => {
   if (lastActivity && window.openStory) window.openStory(lastActivity);
 });
 
+// stažení tréninkového deníku (PDF) za období
+const DIARY_LABEL = { month: 'měsíc', quarter: '3 měsíce', half: 'půl rok', year: 'rok', all: 'vše' };
+async function downloadDiary(period, btn) {
+  const url = '/api/diary?period=' + encodeURIComponent(period);
+  if (btn) { btn.classList.add('busy'); btn.textContent = '⏳'; }
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('bad');
+    const blob = await res.blob();
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `tempo-denik-${period}.pdf`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  } catch {
+    window.open(url, '_blank'); // fallback: otevři v prohlížeči
+  } finally {
+    if (btn) { btn.classList.remove('busy'); btn.textContent = btn.dataset.label; }
+  }
+}
+document.querySelectorAll('.diaryBtn').forEach((b) => {
+  b.dataset.label = b.textContent;
+  b.addEventListener('click', () => downloadDiary(b.dataset.period, b));
+});
+
 async function loadChat() {
   if (chatLoaded) return;
   chatLoaded = true;
@@ -345,9 +370,19 @@ function renderChat(state) {
     ? '<div class="chatmem">🧠 Parťák si pamatuje i předchozí týdny — historie se drží krátká.</div>'
     : '';
   $('chatMsgs').innerHTML = mem + (state.messages || [])
-    .map((m) => `<div class="pmsg ${m.role === 'user' ? 'user' : 'ai'}">${esc(m.text)}</div>`)
+    .map((m) => {
+      const bubble = `<div class="pmsg ${m.role === 'user' ? 'user' : 'ai'}">${esc(m.text)}</div>`;
+      if (m.role === 'ai' && m.diary) {
+        return bubble + `<button class="diaryBtn chatDiaryBtn" data-period="${m.diary.period}" style="margin:0 0 10px">📄 Stáhnout deník (${DIARY_LABEL[m.diary.period] || 'PDF'})</button>`;
+      }
+      return bubble;
+    })
     .join('');
 }
+$('chatMsgs').addEventListener('click', (e) => {
+  const b = e.target.closest('.chatDiaryBtn');
+  if (b) downloadDiary(b.dataset.period, b);
+});
 
 // ---------- denní rutina ----------
 let routineDef = [];
