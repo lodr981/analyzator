@@ -79,7 +79,9 @@ function summarizeSamples(samples) {
 }
 
 // Poskládá výsledný objekt z (částečného) souhrnu + vzorků.
-function build({ sport, startTime, totals, samples, maxHr }) {
+// geo = měl soubor GPS/výškovou stopu (venku). Bez ní + neznámý sport + vzdálenost
+// + pomalé tempo = nejspíš plavání v bazénu (Garmin ho v TCX exportuje jako "Other").
+function build({ sport, startTime, totals, samples, maxHr, geo = true }) {
   const derived = summarizeSamples(samples);
   const durationSec = totals.durationSec ?? derived.durationSec;
   const distanceM = totals.distanceM ?? derived.distanceM;
@@ -91,18 +93,29 @@ function build({ sport, startTime, totals, samples, maxHr }) {
     distanceM != null && durationSec
       ? +((distanceM / durationSec) * 3.6).toFixed(1)
       : null;
+
+  let sportFinal = sport || 'unknown';
+  if (sportFinal === 'unknown' && !geo && distanceM > 0 && avgSpeedKmh != null && avgSpeedKmh < 7) {
+    sportFinal = 'swim';
+  }
+
   const pacePerKm =
     distanceM && durationSec
       ? formatPace(durationSec / (distanceM / 1000))
       : null;
+  const pacePer100m =
+    sportFinal === 'swim' && distanceM && durationSec
+      ? formatPace(durationSec / (distanceM / 100))
+      : null;
 
   return {
-    sport: sport || 'unknown',
+    sport: sportFinal,
     startTime: startTime || (samples[0] ? new Date(samples[0].t).toISOString() : null),
     durationSec,
     distanceKm,
     avgSpeedKmh,
     pacePerKm,
+    pacePer100m,
     avgHr,
     maxHr: totals.maxHr ?? derived.maxHr,
     elevationGainM: totals.elevationGainM ?? derived.elevationGainM,
@@ -154,12 +167,14 @@ async function parseFit(buffer) {
     elevationGainM: num(session.total_ascent),
   };
 
+  const geo = samples.some((s) => s.alt != null);
   return build({
-    sport: normalizeSport(session.sport),
+    sport: normalizeSport(session.sport || session.sub_sport),
     startTime: session.start_time ? new Date(session.start_time).toISOString() : null,
     totals,
     samples,
     maxHr: null,
+    geo,
   });
 }
 
@@ -170,17 +185,19 @@ function parseTcx(text) {
   const activity = toArray(doc?.TrainingCenterDatabase?.Activities?.Activity)[0] || {};
   const laps = toArray(activity.Lap);
 
-  let durationSec = 0, distanceM = 0;
+  let durationSec = 0, distanceM = 0, geo = false;
   const samples = [];
   for (const lap of laps) {
     durationSec += num(lap.TotalTimeSeconds) || 0;
     distanceM += num(lap.DistanceMeters) || 0;
     for (const tp of toArray(lap?.Track?.Trackpoint)) {
+      const alt = num(tp.AltitudeMeters);
+      if (alt != null || tp.Position != null) geo = true; // venku (GPS/výška)
       samples.push({
         t: tp.Time ? new Date(tp.Time).getTime() : null,
         hr: num(tp?.HeartRateBpm?.Value),
         dist: num(tp.DistanceMeters),
-        alt: num(tp.AltitudeMeters),
+        alt,
       });
     }
   }
@@ -197,6 +214,7 @@ function parseTcx(text) {
     },
     samples: samples.filter((s) => s.t != null),
     maxHr: null,
+    geo,
   });
 }
 
@@ -236,8 +254,10 @@ function normalizeSport(s) {
   if (v.includes('bik') || v.includes('cycl') || v.includes('kolo')) return 'bike';
   if (v.includes('run') || v.includes('běh') || v.includes('beh')) return 'run';
   if (v.includes('swim') || v.includes('plav')) return 'swim';
-  if (v.includes('hik') || v.includes('walk') || v.includes('túr')) return 'hike';
-  if (v.includes('ski') || v.includes('běžk')) return 'ski';
+  if (v.includes('hik') || v.includes('walk') || v.includes('túr') || v.includes('chůz') || v.includes('chuz')) return 'hike';
+  if (v.includes('ski') || v.includes('běžk') || v.includes('bezk')) return 'ski';
+  // Garmin nespecifikované/„jiné" (typicky bazén, kardio) → neznámý (dořeší heuristika)
+  if (v === 'other' || v === 'multisport' || v === 'training' || v === 'fitness_equipment' || v === 'generic') return 'unknown';
   return v;
 }
 

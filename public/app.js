@@ -148,10 +148,10 @@ function render(data) {
 
 function metricsFor(s, labels) {
   const cells = [];
-  const isRunOrSwim = s.sport === 'run' || s.sport === 'swim';
   if (s.distanceKm != null) cells.push(cell(s.distanceKm, 'km', 'vzdálenost'));
   cells.push(cell(labels.duration, '', 'čas'));
-  if (isRunOrSwim && s.pacePerKm) cells.push(cell(s.pacePerKm, '/km', 'tempo'));
+  if (s.sport === 'swim' && s.pacePer100m) cells.push(cell(s.pacePer100m, '/100m', 'tempo'));
+  else if (s.sport === 'run' && s.pacePerKm) cells.push(cell(s.pacePerKm, '/km', 'tempo'));
   else if (s.avgSpeedKmh != null) cells.push(cell(s.avgSpeedKmh, 'km/h', 'tempo'));
   if (s.avgHr != null) cells.push(cell(s.avgHr, 'bpm', 'prům. tep'));
   return cells.slice(0, 3).join('');
@@ -261,7 +261,8 @@ function historyRow(e) {
   const stars = '★'.repeat(e.coach?.rating || 0) + '☆'.repeat(5 - (e.coach?.rating || 0));
   const val = s.distanceKm != null ? `${s.distanceKm} km` : (e.labels?.duration || '—');
   let sub = '';
-  if (sport === 'run' || sport === 'swim') sub = s.pacePerKm ? `${s.pacePerKm} /km` : '';
+  if (sport === 'swim') sub = s.pacePer100m ? `${s.pacePer100m} /100m` : '';
+  else if (sport === 'run') sub = s.pacePerKm ? `${s.pacePerKm} /km` : '';
   else sub = s.avgSpeedKmh != null ? `${s.avgSpeedKmh} km/h` : '';
   return `<button class="hrow">
     <div class="hicon ${iconClass}">${icon}</div>
