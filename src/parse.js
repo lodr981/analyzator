@@ -272,13 +272,22 @@ function normalizeSport(s) {
 
 export async function parseActivity(buffer, filename = '') {
   const ext = filename.toLowerCase().split('.').pop();
-  const head = buffer.slice(0, 12).toString('utf8');
 
+  // Garmin „Export originálu" stáhne FIT zabalený v ZIPu — rozbal a vezmi aktivitu uvnitř.
+  if ((buffer[0] === 0x50 && buffer[1] === 0x4b) || ext === 'zip') {
+    const { default: AdmZip } = await import('adm-zip');
+    const entries = new AdmZip(buffer).getEntries();
+    const entry = entries.find((e) => /\.(fit|tcx|gpx)$/i.test(e.entryName));
+    if (!entry) throw new Error('V ZIPu není .FIT/.TCX/.GPX aktivita.');
+    return parseActivity(entry.getData(), entry.entryName);
+  }
+
+  const head = buffer.slice(0, 12).toString('utf8');
   if (ext === 'fit' || head.includes('.FIT')) return parseFit(buffer);
 
   const text = buffer.toString('utf8');
   if (ext === 'tcx' || text.includes('TrainingCenterDatabase')) return parseTcx(text);
   if (ext === 'gpx' || text.includes('<gpx')) return parseGpx(text);
 
-  throw new Error('Nepodporovaný formát. Nahraj .FIT, .TCX nebo .GPX z Garminu.');
+  throw new Error('Nepodporovaný formát. Nahraj .FIT, .TCX, .GPX nebo .ZIP z Garminu.');
 }
