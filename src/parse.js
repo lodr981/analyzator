@@ -94,9 +94,16 @@ function build({ sport, startTime, totals, samples, maxHr, geo = true }) {
       ? +((distanceM / durationSec) * 3.6).toFixed(1)
       : null;
 
+  const elevGain = totals.elevationGainM ?? derived.elevationGainM;
+  const flatish = elevGain == null || elevGain < 20; // skoro žádné převýšení (na vodě)
+
+  // Odhad plavání, když Garmin sport nezná ("Other"):
+  //  - bazén: žádná GPS/výšková stopa + pomalé tempo
+  //  - otevřená voda: má GPS, ale je to ploché a pomalé (plave se ~1,5–6 km/h)
   let sportFinal = sport || 'unknown';
-  if (sportFinal === 'unknown' && !geo && distanceM > 0 && avgSpeedKmh != null && avgSpeedKmh < 7) {
-    sportFinal = 'swim';
+  if (sportFinal === 'unknown' && distanceM > 0 && avgSpeedKmh != null) {
+    if (!geo && avgSpeedKmh < 7) sportFinal = 'swim';
+    else if (geo && flatish && avgSpeedKmh < 6) sportFinal = 'swim';
   }
 
   const pacePerKm =
