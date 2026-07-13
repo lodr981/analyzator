@@ -279,7 +279,9 @@ let chatLoaded = false;
 chatSend.addEventListener('click', sendChatMessage);
 document.querySelectorAll('#chatChips .chip, #chatChips2 .chip').forEach((c) =>
   c.addEventListener('click', () => {
-    if (c.dataset.fill != null) {
+    if (c.dataset.recap != null) {
+      requestRecap();
+    } else if (c.dataset.fill != null) {
       // šablona k doplnění — vlož a nech Olivera dopsat (neodesílej)
       chatText.value = c.dataset.fill;
       chatText.focus();
@@ -290,6 +292,22 @@ document.querySelectorAll('#chatChips .chip, #chatChips2 .chip').forEach((c) =>
     }
   })
 );
+
+async function requestRecap() {
+  chatMsg.textContent = '🎉 Chystám zhodnocení týdne…';
+  chatMsg.className = 'msg load';
+  try {
+    const res = await fetch('/api/chat/recap', { method: 'POST' });
+    const state = await res.json();
+    if (!res.ok) throw new Error(state.error || 'Nepodařilo se.');
+    chatMsg.className = 'msg';
+    renderChat(state);
+    setTimeout(() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }), 50);
+  } catch (err) {
+    chatMsg.textContent = '⚠️ ' + err.message;
+    chatMsg.className = 'msg err';
+  }
+}
 $('askCoach').addEventListener('click', () => {
   showScreen('chat');
   chatText.value = 'Rozeber mi můj poslední trénink a porovnej ho s předchozím.';
@@ -371,6 +389,9 @@ function renderChat(state) {
     : '';
   $('chatMsgs').innerHTML = mem + (state.messages || [])
     .map((m) => {
+      if (m.role === 'ai' && m.kind === 'recap') {
+        return `<div class="pmsg ai recap"><div class="recapHdr">🎉 Zhodnocení týdne</div>${esc(m.text)}</div>`;
+      }
       const bubble = `<div class="pmsg ${m.role === 'user' ? 'user' : 'ai'}">${esc(m.text)}</div>`;
       if (m.role === 'ai' && m.diary) {
         return bubble + `<button class="diaryBtn chatDiaryBtn" data-period="${m.diary.period}" style="margin:0 0 10px">📄 Stáhnout deník (${DIARY_LABEL[m.diary.period] || 'PDF'})</button>`;

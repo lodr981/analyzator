@@ -9,10 +9,10 @@ import { aiEnabled, generateCoachComment } from './src/aiCoach.js';
 import { generatePlan, planAiEnabled } from './src/aiPlan.js';
 import { computeForm } from './src/form.js';
 import { computeReadiness } from './src/readiness.js';
-import { scoreNutrition } from './src/nutrition.js';
+import { scoreNutrition, nutritionPeriod } from './src/nutrition.js';
 import { parseMetrics } from './src/metrics.js';
 import { streamDiaryPdf, DIARY_PERIODS } from './src/diary.js';
-import { generateReply, assistantEnabled, summarizeChat } from './src/assistant.js';
+import { generateReply, assistantEnabled, summarizeChat, generateWeeklyRecap } from './src/assistant.js';
 import { ROUTINE, routineDigest } from './src/routine.js';
 import { computeAchievements } from './src/achievements.js';
 import { initPush, pushReady, vapidPublicKey, sendToAll } from './src/push.js';
@@ -20,7 +20,7 @@ import { dailyReminderCheck } from './src/reminders.js';
 import {
   initDb, dbBackend, dbInfo, addActivity, listActivities, deleteActivity, findByFingerprint,
   getPlan, savePlan, getChat, saveChat, listMeasurements, listNutrition, getRoutine, saveRoutine,
-  addPushSub, listWellness, listGoals, getHealth, addMeasurement, addWellness,
+  addPushSub, listWellness, listGoals, getHealth, addMeasurement, addWellness, getSetting, setSetting,
 } from './src/db.js';
 
 // Deterministický záchyt výšky/váhy/spánku z Oliverovy zprávy — pojistka, aby
@@ -437,6 +437,102 @@ app.post('/api/chat/message', async (req, res) => {
   }
 });
 
+// ---- Nedělní zhodnocení týdne (motivační proslov od parťáka) ----
+
+// Pondělí 00:00 UTC aktuálního týdne + klíč týdne.
+function weekMonday() {
+  const x = new Date(); x.setUTCHours(0, 0, 0, 0);
+  x.setUTCDate(x.getUTCDate() - ((x.getUTCDay() + 6) % 7));
+  return x;
+}
+const weekKeyStr = () => weekMonday().toISOString().slice(0, 10);
+
+// Souhrn KONČÍCÍHO týdne pro proslov (jiný než denní digest — cílí na týden).
+async function buildWeeklyDigest() {
+  const [acts, routineState, wellness, goals, nutr] = await Promise.all([
+    listActivities().catch(() => []),
+    getRoutine().catch(() => ({})),
+    listWellness().catch(() => []),
+    listGoals().catch(() => []),
+    listNutrition().catch(() => []),
+  ]);
+  const wk = weekMonday();
+  const wkActs = acts.filter((a) => { const d = new Date(a.summary?.startTime || a.ts); return !isNaN(d) && d >= wk; });
+
+  const lines = [`Neděle ${new Date().toISOString().slice(0, 10)} — shrnutí týdne od ${wk.toISOString().slice(0, 10)}.`];
+
+  let km = 0, sec = 0, elev = 0; const bySport = {};
+  for (const a of wkActs) {
+    const s = a.summary || {};
+    km += s.distanceKm || 0; sec += s.durationSec || 0; elev += s.elevationGainM || 0;
+    const k = a.labels?.sport || s.sport || 'Aktivita';
+    bySport[k] = (bySport[k] || 0) + 1;
+  }
+  lines.push(`Tréninků: ${wkActs.length}${wkActs.length ? ` (${Object.entries(bySport).map(([k, v]) => `${k} ${v}×`).join(', ')})` : ''}`);
+  lines.push(`Objem: ${Math.round(km)} km, ${(sec / 3600).toFixed(1)} h, převýšení ${Math.round(elev)} m`);
+
+  try {
+    const ach = computeAchievements(acts, routineState);
+    const earned = (ach.badges || []).filter((b) => b.earned);
+    if (earned.length) lines.push('Odznaky týdne: ' + earned.map((b) => `${b.name} (${b.tier})`).join(', '));
+    else lines.push('Odznaky týdne: zatím žádný — příště na ně vlétni.');
+  } catch {}
+
+  try { const f = computeForm(acts); if (!f.empty) lines.push(`Forma: kondice ${f.fitness}, únava ${f.fatigue}, forma ${f.form} (${f.trend})`); } catch {}
+
+  const wkWell = wellness.filter((w) => new Date(w.date) >= wk);
+  if (wkWell.length) {
+    const avg = (key) => { const v = wkWell.map((w) => w[key]).filter((x) => x != null); return v.length ? Math.round((v.reduce((s, x) => s + x, 0) / v.length) * 10) / 10 : null; };
+    const p = [];
+    if (avg('sleep_hours') != null) p.push(`spánek ø ${avg('sleep_hours')} h`);
+    if (avg('feel') != null) p.push(`pocit ø ${avg('feel')}/5`);
+    if (avg('soreness') != null) p.push(`svalovka ø ${avg('soreness')}/5`);
+    if (p.length) lines.push('Wellness: ' + p.join(', '));
+  }
+
+  try {
+    const np = nutritionPeriod(nutr, wk.getTime());
+    if (np.loggedDays) lines.push(`Strava: zapsáno ${np.loggedDays} dní, dost bílkovin ${np.proteinOk}/${np.loggedDays} dní, dost sacharidů ${np.carbOk}/${np.loggedDays} dní`);
+    else lines.push('Strava: tenhle týden skoro nic nezapsáno.');
+  } catch {}
+
+  let rDays = 0; const wkMon = wk.toISOString().slice(0, 10);
+  for (const day of Object.keys(routineState || {})) if (day >= wkMon && (routineState[day] || []).length) rDays++;
+  lines.push(`Rutina: odcvičeno ${rDays} dní.`);
+
+  const ng = nextGoal(goals);
+  if (ng) lines.push(`Další cíl: ${ng.title} — za ${ng.days} dní.`);
+
+  return lines.join('\n');
+}
+
+// Vygeneruje proslov, uloží ho jako zprávu parťáka a pošle push. Vrací text/null.
+async function runWeeklyRecap() {
+  if (!assistantEnabled()) return null;
+  const digest = await buildWeeklyDigest();
+  const text = await generateWeeklyRecap({ digest });
+  if (!text) return null;
+  const state = (await getChat()) || { messages: [] };
+  state.messages.push({ role: 'ai', kind: 'recap', text, ts: Date.now() });
+  state.messages = state.messages.slice(-60);
+  await saveChat(state);
+  try { await sendToAll({ title: 'TEMPO — zhodnocení týdne 🎉', body: 'Parťák ti shrnul týden a kam dál. Mrkni! 🚴🔥' }); } catch {}
+  return text;
+}
+
+// Ruční spuštění (tlačítko v chatu / test).
+app.post('/api/chat/recap', async (_req, res) => {
+  try {
+    const text = await runWeeklyRecap();
+    if (!text) return res.status(400).json({ error: 'Zhodnocení potřebuje zapnuté AI (ANTHROPIC_API_KEY).' });
+    const state = (await getChat()) || { messages: [] };
+    res.json(chatView(state));
+  } catch (err) {
+    console.error('recap error:', err.message);
+    res.status(500).json({ error: 'Zhodnocení se nepodařilo.' });
+  }
+});
+
 // ---- Úspěchy: série, rekordy, odznaky ----
 app.get('/api/achievements', async (_req, res) => {
   try {
@@ -506,21 +602,33 @@ app.post('/api/push/test', async (_req, res) => {
 
 app.get('/healthz', (_req, res) => res.json({ ok: true, ai: aiEnabled(), push: pushReady(), ...dbInfo() }));
 
-// Denní připomínka: jednou denně v REMIND_HOUR (UTC) zkontroluj a případně pošli.
+// Plánovač (kontrola po 15 min):
+//  - denní připomínka v REMIND_HOUR (push)
+//  - nedělní zhodnocení týdne v RECAP_HOUR (proslov do chatu + push), max 1× za týden
 const REMIND_HOUR = Number(process.env.PUSH_HOUR ?? 18); // ~19–20 h v ČR
+const RECAP_HOUR = Number(process.env.RECAP_HOUR ?? 17); // neděle ~18–19 h v ČR
 let lastRemind = null;
 setInterval(async () => {
-  if (!pushReady()) return;
   const now = new Date();
   const t = now.toISOString().slice(0, 10);
-  if (now.getUTCHours() === REMIND_HOUR && lastRemind !== t) {
+
+  if (pushReady() && now.getUTCHours() === REMIND_HOUR && lastRemind !== t) {
     lastRemind = t;
+    try { console.log('Denní připomínka:', JSON.stringify(await dailyReminderCheck())); }
+    catch (e) { console.error('reminder error:', e.message); }
+  }
+
+  // neděle (getUTCDay()===0) v RECAP_HOUR — jednou za týden (klíč uložen v settings)
+  if (now.getUTCDay() === 0 && now.getUTCHours() === RECAP_HOUR && assistantEnabled()) {
     try {
-      const r = await dailyReminderCheck();
-      console.log('Denní připomínka:', JSON.stringify(r));
-    } catch (e) {
-      console.error('reminder error:', e.message);
-    }
+      const wk = weekKeyStr();
+      const last = await getSetting('lastRecapWeek').catch(() => null);
+      if (last !== wk) {
+        await setSetting('lastRecapWeek', wk);
+        const text = await runWeeklyRecap();
+        console.log('Nedělní zhodnocení odesláno:', Boolean(text));
+      }
+    } catch (e) { console.error('recap schedule error:', e.message); }
   }
 }, 15 * 60 * 1000);
 

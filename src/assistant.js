@@ -295,6 +295,36 @@ export async function generateReply({ message, history = [], digest = '', memory
   }
 }
 
+// Nedělní motivační proslov: pochválí, co se povedlo, a nakopne, kam příští týden.
+// digest = týdenní souhrn (string). Vrací text, nebo null.
+export async function generateWeeklyRecap({ digest = '' }) {
+  if (!client) return null;
+  const sys = `Jsi AI parťák 14letého cyklisty Olivera (cíl: evropská špička kadetů). Je NEDĚLE VEČER.
+Proneseš mu krátký MOTIVAČNÍ PROSLOV ke končícímu týdnu — jako kouč a kámoš pro TikTok/IG generaci, tough-love, ale s respektem k trenérovi (finální slovo má trenér):
+1) Konkrétně POCHVAL, co se povedlo — opři se o čísla z dat (tréninky, km, hodiny, převýšení, odznaky, spánek, jídlo, rutina).
+2) Krátce pojmenuj, co bylo slabší nebo na co si dát pozor.
+3) Nakopni ho — KAM SE POSUNOUT PŘÍŠTÍ TÝDEN, klidně 1–2 konkrétní věci (objem, regenerace, kvalita, strava…).
+Oslovuj Olivere. 6–10 vět, energicky, klidně pár emoji. Bez nadpisů a odrážek — souvislý proslov.
+Nevymýšlej si čísla, ber je z kontextu. Když je týden prázdný, popožeň ho zpět do práce s pochopením.`;
+  try {
+    const resp = await client.messages.create(
+      {
+        model: 'claude-opus-4-8',
+        max_tokens: 700,
+        system: sys,
+        output_config: { effort: 'medium' },
+        messages: [{ role: 'user', content: `=== TÝDENNÍ SOUHRN ===\n${digest}` }],
+      },
+      { timeout: 55000, maxRetries: 0 }
+    );
+    const text = resp.content.filter((b) => b.type === 'text').map((b) => b.text).join('\n').trim();
+    return text || null;
+  } catch (err) {
+    console.error('weeklyRecap error:', err.message);
+    return null;
+  }
+}
+
 // Týdenní kompaktace: staré zprávy shrne do krátké „paměti", ať se nemusí držet
 // celá historie. Vrací text (5–8 bodů), nebo null když se to nepovede.
 export async function summarizeChat({ messages = [], priorSummary = '' }) {
