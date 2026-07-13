@@ -30,6 +30,30 @@ function level(hits) {
 const todayKey = () => new Date().toISOString().slice(0, 10);
 const dayKey = (iso) => (iso ? String(iso).slice(0, 10) : '');
 
+// Ohodnotí libovolný text jídla (pro deník za období, ne jen dnešek).
+export function scoreText(text) {
+  return { protein: level(countHits(text, PROTEIN)), carbs: level(countHits(text, CARBS)) };
+}
+
+// Souhrn stravy za období: kolik dní bylo zapsáno a v kolika bylo dost bílkovin/sacharidů.
+export function nutritionPeriod(entries, cutoffMs) {
+  const byDay = {};
+  for (const e of entries || []) {
+    const t = new Date(e.date).getTime();
+    if (isNaN(t) || t < cutoffMs) continue;
+    const d = dayKey(e.date);
+    (byDay[d] = byDay[d] || []).push(e.text || '');
+  }
+  const days = Object.keys(byDay);
+  let proteinOk = 0, carbOk = 0;
+  for (const d of days) {
+    const s = scoreText(byDay[d].join(' ; '));
+    if (s.protein !== 'nízká') proteinOk++;
+    if (s.carbs !== 'nízká') carbOk++;
+  }
+  return { loggedDays: days.length, proteinOk, carbOk };
+}
+
 export function scoreNutrition(entries) {
   const list = entries || [];
   const tKey = todayKey();

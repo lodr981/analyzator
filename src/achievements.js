@@ -24,6 +24,14 @@ function isoWeekKey(d) {
   x.setUTCDate(x.getUTCDate() - dow); // pondělí
   return x.toISOString().slice(0, 10);
 }
+// Začátek aktuálního týdne (pondělí 00:00 UTC) — odznaky se každé pondělí resetují.
+function weekStart() {
+  const x = new Date();
+  x.setUTCHours(0, 0, 0, 0);
+  const dow = (x.getUTCDay() + 6) % 7;
+  x.setUTCDate(x.getUTCDate() - dow);
+  return x;
+}
 
 // Tříúrovňový odznak. tiers = [bronz, stříbro, zlato]. round = zaokrouhlení hodnoty.
 function tierBadge(id, icon, name, unit, value, tiers, round = 0) {
@@ -94,27 +102,40 @@ export function computeAchievements(activities = [], routineState = {}) {
   const maxWeekKm = Math.max(0, ...Object.values(weekKm));
   const maxWeekH = Math.max(0, ...Object.values(weekSec)) / 3600;
 
-  // jednoduchý startovní odznak (bez úrovní)
-  const first = {
-    id: 'first', icon: '🚴', name: 'První jízda', unit: '',
-    tier: activities.length >= 1 ? 'bronze' : null, earned: activities.length >= 1,
-    value: activities.length >= 1 ? 1 : 0, tiers: null, next: activities.length >= 1 ? null : 1, pct: activities.length >= 1 ? 100 : 0,
-  };
+  // ---- ODZNAKY TÝDNE (jen z aktuálního týdne, reset každé pondělí) ----
+  const wk = weekStart();
+  const wkMonday = dayKey(wk);
+  let wkKm = 0, wkSec = 0, wkLongRide = 0, wkLongSec = 0, wkClimb = 0, wkLongRun = 0, wkCount = 0;
+  for (const a of activities) {
+    const d = new Date(a.summary?.startTime || a.ts);
+    if (isNaN(d) || d < wk) continue;
+    const s = a.summary || {};
+    wkCount++;
+    wkKm += s.distanceKm || 0;
+    wkSec += s.durationSec || 0;
+    if ((s.distanceKm || 0) > wkLongRide) wkLongRide = s.distanceKm || 0;
+    if ((s.durationSec || 0) > wkLongSec) wkLongSec = s.durationSec || 0;
+    if ((s.elevationGainM || 0) > wkClimb) wkClimb = s.elevationGainM || 0;
+    if (s.sport === 'run' && (s.distanceKm || 0) > wkLongRun) wkLongRun = s.distanceKm || 0;
+  }
+  let wkRoutineDays = 0;
+  for (const day of Object.keys(routineState || {})) {
+    if (day >= wkMonday && (routineState[day] || []).length) wkRoutineDays++;
+  }
 
   const badges = [
-    first,
-    tierBadge('weekhours', '⏱️', 'Týdenní objem', 'h', maxWeekH, [10, 12, 14], 1),
-    tierBadge('weekkm', '💯', 'Týdenní nálož', 'km', maxWeekKm, [100, 150, 220]),
-    tierBadge('longride', '🚴', 'Nejdelší jízda', 'km', longestKm, [60, 100, 140]),
-    tierBadge('climb', '🏔️', 'Král stoupání', 'm', elev, [800, 1500, 2500]),
-    tierBadge('saddle', '⏳', 'Nejdéle v sedle', 'min', longestSec / 60, [120, 180, 240]),
-    tierBadge('run', '🏃', 'Běžec', 'km', longestRunKm, [5, 8, 12]),
-    tierBadge('core', '💪', 'Core mašina', 'dní', routineDays, [5, 12, 25]),
-    tierBadge('grind', '⭐', 'Dříč', '', activities.length, [25, 75, 200]),
-    tierBadge('streak', '🔥', 'Série', 'dní', streak, [7, 14, 30]),
+    tierBadge('weekhours', '⏱️', 'Týdenní objem', 'h', wkSec / 3600, [10, 12, 14], 1),
+    tierBadge('weekkm', '💯', 'Týdenní nálož', 'km', wkKm, [100, 150, 220]),
+    tierBadge('sessions', '📅', 'Tréninků', '', wkCount, [4, 6, 8]),
+    tierBadge('longride', '🚴', 'Nejdelší jízda', 'km', wkLongRide, [60, 100, 140]),
+    tierBadge('climb', '🏔️', 'Král stoupání', 'm', wkClimb, [800, 1500, 2500]),
+    tierBadge('saddle', '⏳', 'Nejdéle v sedle', 'min', wkLongSec / 60, [90, 150, 210]),
+    tierBadge('run', '🏃', 'Běžec', 'km', wkLongRun, [5, 8, 12]),
+    tierBadge('core', '💪', 'Core mašina', 'dní', wkRoutineDays, [3, 5, 7]),
   ];
 
   return {
+    weekStart: wkMonday,
     streak,
     records: {
       longestKm: longestKm || null,

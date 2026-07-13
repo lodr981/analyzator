@@ -238,14 +238,15 @@ app.get('/api/goals', async (_req, res) => {
 app.get('/api/diary', async (req, res) => {
   const period = DIARY_PERIODS[req.query.period] ? req.query.period : 'month';
   try {
-    const [activities, measurements, nutrition, goals, routineState] = await Promise.all([
+    const [activities, measurements, nutrition, goals, routineState, wellness] = await Promise.all([
       listActivities().catch(() => []),
       listMeasurements().catch(() => []),
       listNutrition().catch(() => []),
       listGoals().catch(() => []),
       getRoutine().catch(() => ({})),
+      listWellness().catch(() => []),
     ]);
-    streamDiaryPdf(res, { activities, measurements, nutrition, goals, routineState }, period);
+    streamDiaryPdf(res, { activities, measurements, nutrition, goals, routineState, wellness }, period);
   } catch (err) {
     console.error('diary error:', err.message);
     res.status(500).json({ error: 'Nepodařilo se vytvořit deník.' });

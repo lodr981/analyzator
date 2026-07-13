@@ -6,8 +6,9 @@ import PDFDocument from 'pdfkit';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { computeForm } from './form.js';
-import { scoreNutrition } from './nutrition.js';
+import { scoreNutrition, nutritionPeriod } from './nutrition.js';
 import { computeAchievements } from './achievements.js';
+import { ROUTINE_IDS } from './routine.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const FONT = path.join(__dirname, '../assets/fonts/DejaVuSans.ttf');
@@ -141,17 +142,62 @@ export function streamDiaryPdf(res, data, periodKey) {
     }
   }
 
-  // ---- strava ----
+  // ---- jak ses cítil (wellness za období) ----
+  const wellAll = (data.wellness || []).filter((w) => {
+    const d = new Date(w.date); return !isNaN(d) && d.getTime() >= cutoff;
+  });
+  if (wellAll.length) {
+    heading('Jak ses cítil');
+    const avg = (key) => {
+      const vals = wellAll.map((w) => w[key]).filter((v) => v != null);
+      return vals.length ? Math.round((vals.reduce((s, v) => s + v, 0) / vals.length) * 10) / 10 : null;
+    };
+    const sleep = avg('sleep_hours'), feel = avg('feel'), sore = avg('soreness'), rhr = avg('resting_hr');
+    const bits = [];
+    if (sleep != null) bits.push(`spánek ø ${sleep} h`);
+    if (feel != null) bits.push(`pocit ø ${feel}/5`);
+    if (sore != null) bits.push(`svalovka ø ${sore}/5`);
+    if (rhr != null) bits.push(`klidový tep ø ${rhr}`);
+    if (bits.length) row2(bits.join('   ·   '));
+    doc.font('r').fontSize(9.5).fill(MUT);
+    for (const w of wellAll.slice(0, 8)) {
+      const p = [];
+      if (w.sleep_hours != null) p.push(`spánek ${w.sleep_hours} h`);
+      if (w.feel != null) p.push(`pocit ${w.feel}/5`);
+      if (w.soreness != null) p.push(`svalovka ${w.soreness}/5`);
+      if (w.resting_hr != null) p.push(`tep ${w.resting_hr}`);
+      if (p.length) { ensure(14); doc.text(`${fmtDate(w.date)} — ${p.join(', ')}`, L, doc.y, { width: W }); }
+    }
+    doc.fill(INK);
+  }
+
+  // ---- strava (jestli dobře jedl) ----
   const nutr = data.nutrition || [];
   if (nutr.length) {
-    heading('Strava');
+    heading('Strava — jestli dobře jedl');
     try {
+      const np = nutritionPeriod(nutr, cutoff);
+      if (np.loggedDays) {
+        row2(`Zapsáno ${np.loggedDays} dní · dost bílkovin ${np.proteinOk}/${np.loggedDays} dní · dost sacharidů ${np.carbOk}/${np.loggedDays} dní`);
+      }
       const ns = scoreNutrition(nutr);
-      row2(`Dnes: bílkoviny ${ns.protein}, sacharidy ${ns.carbs}`);
+      if (ns.hasToday) row2(`Dnes: bílkoviny ${ns.protein}, sacharidy ${ns.carbs}`);
     } catch {}
     doc.font('r').fontSize(9.5).fill(MUT);
-    for (const n of nutr.slice(0, 8)) { ensure(14); doc.text(`${fmtDate(n.date)} — ${n.text}`, L, doc.y, { width: W }); }
+    for (const n of nutr.slice(0, 10)) { ensure(14); doc.text(`${fmtDate(n.date)} — ${n.text}`, L, doc.y, { width: W }); }
     doc.fill(INK);
+  }
+
+  // ---- rutina & cvičení ----
+  const rState = data.routineState || {};
+  const cutoffDay = new Date(cutoff).toISOString().slice(0, 10);
+  let rDays = 0, rChecks = 0;
+  for (const day of Object.keys(rState)) {
+    if (day >= cutoffDay && (rState[day] || []).length) { rDays++; rChecks += rState[day].length; }
+  }
+  if (rDays) {
+    heading('Rutina & cvičení');
+    row2(`Odcvičeno ${rDays} dní · celkem ${rChecks} cviků (rutina má ${ROUTINE_IDS.length} cviků/den)`);
   }
 
   // ---- cíle ----
@@ -172,7 +218,7 @@ export function streamDiaryPdf(res, data, periodKey) {
     const ach = computeAchievements(allActs, data.routineState || {});
     const earned = (ach.badges || []).filter((b) => b.earned);
     if (earned.length) {
-      heading('Odznaky');
+      heading('Odznaky týdne');
       const medal = { gold: 'ZLATO', silver: 'STŘÍBRO', bronze: 'BRONZ' };
       doc.font('r').fontSize(10).fill(INK);
       for (const b of earned) {
