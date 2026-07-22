@@ -17,12 +17,12 @@ Oslovuj ho jménem — "Olivere". Ty sám nemáš jméno a nikdy se nepodepisuj.
 Oliver má i svého lidského trenéra — mluv o něm neutrálně jako "trenér" (bez jména),
 zmiň ho jen když je to opravdu k věci (třeba u plánu), ne v každé zprávě, a nikdy nemluv jako on.
 
-Styl: mluv česky, jako kámoš pro TikTok/Instagram generaci — krátce, energicky, konkrétně.
-Nehlaď zbytečně: cíl je špička, tak si dovol i přitvrdit, když trénink nesedí zadání nebo je málo.
-Ale pořád je to 14letý kluk — tlač ho, ale neodrovnej ho a nikdy netlač do hubnutí.
+Styl: mluv česky, jako kámoš-trenér pro TikTok/Instagram generaci — krátce, ostře, konkrétně.
+Buď NÁROČNÝ: cíl je evropská špička, tak nehlaď a nechval do prázdna. Když je trénink slabý, málo, nebo technicky špatný (mletí těžkého převodu do kopce, rozjezd moc rychlý, dojezd v křeči), řekni to narovinu.
+Ale pořád je to 14letý kluk — tlač ho, ať ho to nakopne, ne položí; nikdy netlač do hubnutí.
 
-Vždy: něco konkrétního oceň (pokud je co) a dej jednu jasnou radu na příště.
-Vycházej POUZE z čísel a postřehů, které dostaneš — nevymýšlej si hodnoty.
+VŽDY vypíchni tu NEJDŮLEŽITĚJŠÍ konkrétní věc ke zlepšení z ANALÝZY (kadence do kopců, tepová odezva/drift, rozložení sil…) a dej jasný pokyn na příště. Když je co, jednou větou i oceň.
+Používej konkrétní čísla z podkladů — nikdy si nevymýšlej hodnoty.
 Odpověz 2–4 větami čistého textu, klidně s jedním emoji. Žádné odrážky, žádný nadpis, žádný podpis.`;
 
 // Sestaví stručný, faktický kontext pro model (ať si nevymýšlí čísla).
@@ -39,10 +39,26 @@ function buildContext(summary, evalResult) {
     summary.elevationGainM ? `Převýšení: ${summary.elevationGainM} m` : null,
     `Čas v zónách: Z1 ${z.z1 ?? 0} %, Z2 ${z.z2 ?? 0} %, Z3 ${z.z3 ?? 0} %, Z4 ${z.z4 ?? 0} %, Z5 ${z.z5 ?? 0} %`,
     `Hodnocení kvality: ${evalResult.rating}/5`,
-    evalResult.good.length ? `Co šlo dobře: ${evalResult.good.join('; ')}` : null,
-    evalResult.improve.length ? `Na příště: ${evalResult.improve.join('; ')}` : null,
-  ].filter(Boolean);
-  return lines.join('\n');
+  ];
+
+  const a = summary.analysis;
+  if (a) {
+    const an = [];
+    if (a.cadenceClimb != null) an.push(`kadence do kopců ${a.cadenceClimb} ot/min${a.grindClimbPct ? ` (${a.grindClimbPct} % stoupání pod 70)` : ''}`);
+    else if (a.avgCadence != null) an.push(`průměrná kadence ${a.avgCadence} ot/min`);
+    if (a.hrDriftPct != null) an.push(`tepový drift ${a.hrDriftPct} % (${a.avgHr1}→${a.avgHr2})`);
+    if (a.fadePct != null) an.push(`rozložení sil: druhá půlka ${a.fadePct > 0 ? '+' : ''}${Math.round(a.fadePct)} % rychlosti`);
+    if (a.avgPower != null) an.push(`výkon ø ${a.avgPower} W${a.climbPower ? `, kopce ${a.climbPower} W` : ''}`);
+    if (a.climbGain != null) an.push(`nastoupáno v kopcích ${a.climbGain} m`);
+    if (an.length) lines.push(`Analýza: ${an.join('; ')}`);
+  }
+
+  const details = (evalResult.details || []).map((d) => `${d.text}${d.tip ? ` → ${d.tip}` : ''}`);
+  if (details.length) lines.push(`Nálezy: ${details.join(' | ')}`);
+  if (evalResult.good.length) lines.push(`Co šlo dobře: ${evalResult.good.join('; ')}`);
+  if (evalResult.improve.length) lines.push(`Na příště: ${evalResult.improve.join('; ')}`);
+
+  return lines.filter(Boolean).join('\n');
 }
 
 // Vrátí text komentáře trenéra, nebo null (a caller použije pravidlový text).

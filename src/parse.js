@@ -2,6 +2,7 @@
 // Podporuje .FIT, .TCX a .GPX. Vrací normalizovaný souhrn + časovou řadu tepu.
 
 import { XMLParser } from 'fast-xml-parser';
+import { analyze } from './analyze.js';
 
 const xml = new XMLParser({
   ignoreAttributes: false,
@@ -128,6 +129,7 @@ function build({ sport, startTime, totals, samples, maxHr, geo = true }) {
     elevationGainM: totals.elevationGainM ?? derived.elevationGainM,
     hrZones: computeZones(samples, usedMaxHr),
     samplesCount: samples.length,
+    analysis: analyze(samples, { sport: sportFinal }),
   };
 }
 
@@ -162,6 +164,8 @@ async function parseFit(buffer) {
       hr: num(r.heart_rate),
       dist: num(r.distance),
       alt: num(r.enhanced_altitude ?? r.altitude),
+      cad: num(r.cadence),
+      pwr: num(r.power),
     }))
     .filter((s) => s.t != null);
 
@@ -200,11 +204,14 @@ function parseTcx(text) {
     for (const tp of toArray(lap?.Track?.Trackpoint)) {
       const alt = num(tp.AltitudeMeters);
       if (alt != null || tp.Position != null) geo = true; // venku (GPS/výška)
+      const tpx = tp?.Extensions?.['ns3:TPX'] || tp?.Extensions?.TPX || {};
       samples.push({
         t: tp.Time ? new Date(tp.Time).getTime() : null,
         hr: num(tp?.HeartRateBpm?.Value),
         dist: num(tp.DistanceMeters),
         alt,
+        cad: num(tp.Cadence ?? tpx['ns3:RunCadence'] ?? tpx.RunCadence ?? tpx['ns3:Cadence'] ?? tpx.Cadence),
+        pwr: num(tpx['ns3:Watts'] ?? tpx.Watts),
       });
     }
   }

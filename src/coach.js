@@ -87,7 +87,53 @@ export function evaluate(summary) {
     improve: improve.slice(0, 3),
     chips: chips.slice(0, 4),
     zonesPct: z.pct,
+    details: buildDetails(summary),
   };
+}
+
+// Podrobná analýza — konkrétní, ostré nálezy s tipem, co zlepšit.
+function buildDetails(summary) {
+  const a = summary.analysis;
+  if (!a) return [];
+  const isBike = summary.sport === 'bike';
+  const out = [];
+  const push = (verdict, icon, text, tip) => out.push({ verdict, icon, text, tip: tip || null });
+
+  // Kadence do kopců (jen kolo — u běhu je jednotka nejistá)
+  if (isBike && a.cadenceClimb != null) {
+    const g = a.grindClimbPct;
+    if (a.cadenceClimb >= 78) push('good', '⛰️', `Kadence do kopců ${a.cadenceClimb} ot/min — pěkně točíš.`);
+    else if (a.cadenceClimb >= 68) push('info', '⛰️', `Kadence do kopců ${a.cadenceClimb} ot/min — mohla by být svižnější.`, 'Cíl je 80+ i ve stoupání: zlehči převod a raději toč.');
+    else push('warn', '⛰️', `Do kopců mleš těžký převod — ${a.cadenceClimb} ot/min${g ? ` (${g} % stoupání pod 70)` : ''}.`, 'Zlehči a drž 80+ ot/min — ušetříš nohy a v kopci líp zrychlíš.');
+  } else if (isBike && a.avgCadence != null && a.avgCadence < 80) {
+    push('info', '🔄', `Průměrná kadence ${a.avgCadence} ot/min — spíš pomalé šlapání.`, 'Zkus svižnější nohy (85–95 na rovině) — šetří to svaly.');
+  } else if (isBike && a.avgCadence != null) {
+    push('good', '🔄', `Průměrná kadence ${a.avgCadence} ot/min — svižné nohy.`);
+  }
+
+  // Tepová odezva / drift
+  if (a.hrDriftPct != null && a.avgHr1 != null) {
+    if (a.hrDriftPct > 8) push('warn', '❤️', `Tep během tréninku vylétl o ${a.hrDriftPct} % (${a.avgHr1}→${a.avgHr2}).`, 'Rozjížděj se pomaleji a pij průběžně — vydržíš rovnoměrnější tep.');
+    else if (a.hrDriftPct >= -3 && a.hrDriftPct <= 4) push('good', '❤️', `Tep držel stabilně (drift ${a.hrDriftPct} %) — dobře rozjeté tempo.`);
+  }
+
+  // Rozložení sil
+  if (a.fadePct != null) {
+    if (a.fadePct < -8) push('warn', '📉', `Druhá půlka o ${Math.abs(Math.round(a.fadePct))} % pomalejší — došly síly.`, 'Rozlož tempo od začátku a dojez líp (jídlo a pití během).');
+    else if (a.fadePct > 6) push('good', '📈', `Negativní split — ve druhé půlce jsi přidal. Silná hlava. 💪`);
+  }
+
+  // Výkon (když je měřák)
+  if (a.avgPower != null) {
+    push('info', '⚡', `Průměrný výkon ${a.avgPower} W${a.climbPower ? `, do kopců ${a.climbPower} W` : ''}.`);
+  }
+
+  // Stoupání
+  if (a.climbGain != null && a.climbSec != null) {
+    push('info', '🏔️', `V kopcích nastoupáno ${a.climbGain} m (${fmtDuration(a.climbSec)}).`);
+  }
+
+  return out.slice(0, 6);
 }
 
 // Textový komentář trenéra — tvrdší, ale povzbuzující.

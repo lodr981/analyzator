@@ -138,6 +138,14 @@ function render(data) {
   $('listsCard').style.display = lists.length ? '' : 'none';
   $('lists').innerHTML = lists.join('');
 
+  const details = coach.details || [];
+  $('analysisCard').style.display = details.length ? '' : 'none';
+  $('analysisList').innerHTML = details.map((d) => `
+    <div class="anrow ${d.verdict}">
+      <span class="anic">${d.icon || '•'}</span>
+      <div class="antext"><div>${esc(d.text)}</div>${d.tip ? `<div class="antip">→ ${esc(d.tip)}</div>` : ''}</div>
+    </div>`).join('');
+
   $('chips').innerHTML = (coach.chips || []).map((c) => `<span class="chip">${c.icon} ${esc(c.text)}</span>`).join('');
 
   uploader.style.display = 'none';

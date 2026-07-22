@@ -236,6 +236,16 @@ input[type=file]{display:none}
 .pmsg.recap .recapHdr{font-weight:800;font-size:13px;letter-spacing:.02em;margin-bottom:8px;background:var(--grad);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
 #chatChips2{margin-bottom:14px}
 
+/* ===== Podrobná analýza tréninku ===== */
+.anrow{display:flex;gap:11px;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--line)}
+.anrow:last-child{border-bottom:none}
+.anrow .anic{font-size:18px;flex:0 0 auto;width:24px;text-align:center;line-height:1.3}
+.anrow .antext{flex:1;font-size:13.5px;line-height:1.4;font-weight:600}
+.anrow .antext>div:first-child{color:var(--ink)}
+.anrow .antip{font-size:12px;color:var(--ink-2);font-weight:600;margin-top:3px}
+.anrow.good .antext>div:first-child{color:var(--volt)}
+.anrow.warn .antext>div:first-child{color:var(--amber)}
+
 /* ===== Deník PDF ===== */
 .diaryBtns{display:flex;flex-wrap:wrap;gap:8px}
 .diaryBtn{flex:1 1 auto;min-width:70px;padding:11px 10px;border-radius:12px;border:1px solid var(--line);background:var(--surf-2);color:var(--ink);font-weight:800;font-size:13px;cursor:pointer;font-family:inherit}
