@@ -85,10 +85,13 @@ app.use(express.static(path.join(__dirname, 'public'), {
 app.use(express.json());
 
 // Nahrání a vyhodnocení aktivity.
+// Dočasně bereme jen FIT (Oliver ať nenahrává TCX/GPX). Vypnutí: ALLOW_ALL_FORMATS=true.
+const FIT_ONLY = process.env.ALLOW_ALL_FORMATS !== 'true';
+
 app.post('/api/upload', upload.single('activity'), async (req, res) => {
-  if (!req.file) return res.status(400).json({ error: 'Žádný soubor. Nahraj .FIT, .TCX nebo .GPX.' });
+  if (!req.file) return res.status(400).json({ error: 'Žádný soubor. Nahraj .FIT nebo .ZIP z Garminu.' });
   try {
-    const summary = await parseActivity(req.file.buffer, req.file.originalname);
+    const summary = await parseActivity(req.file.buffer, req.file.originalname, { fitOnly: FIT_ONLY });
 
     // Duplicita? Vrať už uloženou aktivitu (ušetří i AI volání).
     const fp = fingerprint(summary);

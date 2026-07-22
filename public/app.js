@@ -250,12 +250,14 @@ async function renderHistory() {
   $('historyHdr').style.display = list.length ? '' : 'none';
   $('historyList').innerHTML = list.map(historyRow).join('');
   renderAchievements();
-  document.querySelectorAll('.hrow').forEach((row, i) =>
-    row.addEventListener('click', () => {
-      render(list[i]);
-      showScreen('upload');
-    })
-  );
+  $('historyList').onclick = (ev) => {
+    const del = ev.target.closest('.hdel');
+    if (del) { ev.stopPropagation(); removeActivity(del.dataset.id); return; }
+    const row = ev.target.closest('.hrow');
+    if (!row) return;
+    const a = list.find((x) => x.id === row.dataset.id);
+    if (a) { render(a); showScreen('upload'); }
+  };
 }
 
 async function renderAchievements() {
@@ -326,11 +328,19 @@ function historyRow(e) {
   if (sport === 'swim') sub = s.pacePer100m ? `${s.pacePer100m} /100m` : '';
   else if (sport === 'run') sub = s.pacePerKm ? `${s.pacePerKm} /km` : '';
   else sub = s.avgSpeedKmh != null ? `${s.avgSpeedKmh} km/h` : '';
-  return `<button class="hrow">
+  return `<div class="hrow" data-id="${esc(e.id)}">
     <div class="hicon ${iconClass}">${icon}</div>
     <div class="meta"><b>${esc(e.labels?.sport || 'Aktivita')}</b><span>${fmtDate(s.startTime || e.ts)} · <span class="stars">${stars}</span></span></div>
     <div class="val"><b>${esc(val)}</b><span>${esc(sub)}</span></div>
-  </button>`;
+    <button class="hdel" data-id="${esc(e.id)}" title="Smazat" aria-label="Smazat aktivitu">✕</button>
+  </div>`;
+}
+
+async function removeActivity(id) {
+  if (!confirm('Smazat tuhle aktivitu z historie?')) return;
+  try { await fetch('/api/activities/' + encodeURIComponent(id), { method: 'DELETE' }); } catch {}
+  saveCache(loadCache().filter((a) => a.id !== id));
+  renderHistory();
 }
 
 // ---------- parťák chat ----------

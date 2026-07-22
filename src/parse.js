@@ -277,24 +277,30 @@ function normalizeSport(s) {
 
 // ---- veřejné API ----
 
-export async function parseActivity(buffer, filename = '') {
+const FIT_ONLY_MSG = 'Zatím ber jen FIT 🙂 Na Garmin Connectu (web) otevři aktivitu → ⚙️ → Export originálu → nahraj ten .ZIP (je v něm FIT). TCX/GPX jsou dočasně vypnuté.';
+
+export async function parseActivity(buffer, filename = '', { fitOnly = false } = {}) {
   const ext = filename.toLowerCase().split('.').pop();
 
   // Garmin „Export originálu" stáhne FIT zabalený v ZIPu — rozbal a vezmi aktivitu uvnitř.
   if ((buffer[0] === 0x50 && buffer[1] === 0x4b) || ext === 'zip') {
     const { default: AdmZip } = await import('adm-zip');
     const entries = new AdmZip(buffer).getEntries();
-    const entry = entries.find((e) => /\.(fit|tcx|gpx)$/i.test(e.entryName));
-    if (!entry) throw new Error('V ZIPu není .FIT/.TCX/.GPX aktivita.');
-    return parseActivity(entry.getData(), entry.entryName);
+    const pattern = fitOnly ? /\.fit$/i : /\.(fit|tcx|gpx)$/i;
+    const entry = entries.find((e) => pattern.test(e.entryName));
+    if (!entry) throw new Error(fitOnly ? FIT_ONLY_MSG : 'V ZIPu není .FIT/.TCX/.GPX aktivita.');
+    return parseActivity(entry.getData(), entry.entryName, { fitOnly });
   }
 
   const head = buffer.slice(0, 12).toString('utf8');
   if (ext === 'fit' || head.includes('.FIT')) return parseFit(buffer);
 
+  // FIT-only režim: ostatní formáty dočasně odmítni s jasnou hláškou
+  if (fitOnly) throw new Error(FIT_ONLY_MSG);
+
   const text = buffer.toString('utf8');
   if (ext === 'tcx' || text.includes('TrainingCenterDatabase')) return parseTcx(text);
   if (ext === 'gpx' || text.includes('<gpx')) return parseGpx(text);
 
-  throw new Error('Nepodporovaný formát. Nahraj .FIT, .TCX, .GPX nebo .ZIP z Garminu.');
+  throw new Error('Nepodporovaný formát. Nahraj .FIT nebo .ZIP z Garminu.');
 }

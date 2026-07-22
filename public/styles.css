@@ -153,6 +153,8 @@ input[type=file]{display:none}
 .hrow .val{text-align:right;flex:0 0 auto}
 .hrow .val b{font-size:15px;font-weight:800;font-variant-numeric:tabular-nums;display:block}
 .hrow .val span{font-size:10px;color:var(--ink-3)}
+.hrow .hdel{flex:0 0 auto;width:30px;height:30px;border-radius:9px;border:1px solid var(--line);background:transparent;color:var(--ink-3);font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;line-height:1}
+.hrow .hdel:hover{background:rgba(255,77,141,.15);color:var(--pink);border-color:rgba(255,77,141,.4)}
 .stars{color:var(--volt);font-size:11px;letter-spacing:1px}
 
 /* ===== úspěchy: rekordy & odznaky ===== */
