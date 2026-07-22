@@ -109,6 +109,11 @@ function buildDetails(summary) {
     push('info', '🔄', `Průměrná kadence ${a.avgCadence} ot/min — spíš pomalé šlapání.`, 'Zkus svižnější nohy (85–95 na rovině) — šetří to svaly.');
   } else if (isBike && a.avgCadence != null) {
     push('good', '🔄', `Průměrná kadence ${a.avgCadence} ot/min — svižné nohy.`);
+  } else if (summary.sport === 'run' && a.runCadence != null) {
+    const rc = a.runCadence;
+    if (rc >= 176) push('good', '🦵', `Kadence běhu ${rc} kroků/min — svižný, lehký krok.`);
+    else if (rc >= 165) push('info', '🦵', `Kadence běhu ${rc} kroků/min — mohla by být svižnější.`, 'Přidej frekvenci ke ~180: kratší a rychlejší krok, míň to bere klouby.');
+    else push('warn', '🦵', `Kadence běhu ${rc} kroků/min — dlouhý, pomalý krok (brzdíš se, víc to pálí klouby).`, 'Zkrať krok a zrychli nohy ke 175–180 kroků/min — poskoč víc dopředu, ne nahoru.');
   }
 
   // Tepová odezva / drift

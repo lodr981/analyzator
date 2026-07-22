@@ -99,11 +99,16 @@ export function analyze(samples, { sport = 'bike' } = {}) {
     }
   }
 
+  const avgCad = cadCnt ? Math.round(cadSum / cadCnt) : null;
+  // Kadence běhu = kroky/min. Garmin ukládá kroky na JEDNU nohu (~85), tak zdvojnásob.
+  const runCadence = sport === 'run' && avgCad != null ? (avgCad < 120 ? avgCad * 2 : avgCad) : null;
+
   return {
     sport,
     durSec: Math.round(durSec),
     hasCad, hasPwr,
-    avgCadence: cadCnt ? Math.round(cadSum / cadCnt) : null,
+    runCadence,
+    avgCadence: avgCad,
     cadenceClimb: climbCadCnt ? Math.round(climbCadSum / climbCadCnt) : null,
     cadenceFlat: flatCadCnt ? Math.round(flatCadSum / flatCadCnt) : null,
     grindClimbPct: climbCadCnt ? Math.round((grindCnt / climbCadCnt) * 100) : null,
