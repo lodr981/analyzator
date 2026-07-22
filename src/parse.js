@@ -166,6 +166,11 @@ async function parseFit(buffer) {
       alt: num(r.enhanced_altitude ?? r.altitude),
       cad: num(r.cadence),
       pwr: num(r.power),
+      // běžecká dynamika (Garmin HRM-Pro/Run apod.)
+      sl: num(r.step_length),
+      vo: num(r.vertical_oscillation),
+      vr: num(r.vertical_ratio),
+      gct: num(r.stance_time),
     }))
     .filter((s) => s.t != null);
 

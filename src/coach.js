@@ -116,6 +116,26 @@ function buildDetails(summary) {
     else push('warn', '🦵', `Kadence běhu ${rc} kroků/min — dlouhý, pomalý krok (brzdíš se, víc to pálí klouby).`, 'Zkrať krok a zrychli nohy ke 175–180 kroků/min — poskoč víc dopředu, ne nahoru.');
   }
 
+  // Běžecká dynamika (jen běh, když je z Garminu)
+  if (summary.sport === 'run') {
+    if (a.vertOscCm != null) {
+      if (a.vertOscCm <= 8) push('good', '↕️', `Vertikální oscilace ${a.vertOscCm} cm — běžíš nízko a úsporně.`);
+      else if (a.vertOscCm <= 10) push('info', '↕️', `Vertikální oscilace ${a.vertOscCm} cm — trochu skáčeš nahoru.`, 'Miř dopředu, ne nahoru: rychlejší kadence a měkký, rychlý došlap to sníží.');
+      else push('warn', '↕️', `Vertikální oscilace ${a.vertOscCm} cm — hodně skáčeš nahoru, plýtváš energií.`, 'Zrychli kadenci ke 180, zkrať krok a běž „pod nízkým stropem" — energie dopředu, ne vzhůru.');
+    }
+    if (a.vertRatio != null) {
+      if (a.vertRatio <= 7) push('good', '📐', `Vertikální poměr ${a.vertRatio} % — efektivní styl.`);
+      else if (a.vertRatio <= 9.5) push('info', '📐', `Vertikální poměr ${a.vertRatio} % — je co ladit.`, 'Cíl pod 8 %: víc kadence a odraz dopředu z boků, ne nahoru.');
+      else push('warn', '📐', `Vertikální poměr ${a.vertRatio} % — málo efektivní (moc nahoru na délku kroku).`, 'Posiluj lýtka a boky + drilly (skipping, „rychlé nohy") a přidej kadenci.');
+    }
+    if (a.stepLenCm != null) {
+      push('info', '👣', `Délka kroku ${a.stepLenCm} cm.`, 'Delší krok ať roste z odrazu a natažení boku dozadu (síla hýždí), ne z natahování nohy dopředu — to brzdí.');
+    }
+    if (a.groundMs != null && a.groundMs > 290) {
+      push('warn', '⏱️', `Dlouhý kontakt se zemí ${a.groundMs} ms — odraz je pomalý.`, 'Odrážej se svižně, „horká plotna" pod nohama — pomůžou drilly a plyometrie (poskoky).');
+    }
+  }
+
   // Tepová odezva / drift
   if (a.hrDriftPct != null && a.avgHr1 != null) {
     if (a.hrDriftPct > 8) push('warn', '❤️', `Tep během tréninku vylétl o ${a.hrDriftPct} % (${a.avgHr1}→${a.avgHr2}).`, 'Rozjížděj se pomaleji a pij průběžně — vydržíš rovnoměrnější tep.');
@@ -138,7 +158,7 @@ function buildDetails(summary) {
     push('info', '🏔️', `V kopcích nastoupáno ${a.climbGain} m (${fmtDuration(a.climbSec)}).`);
   }
 
-  return out.slice(0, 6);
+  return out.slice(0, 8);
 }
 
 // Textový komentář trenéra — tvrdší, ale povzbuzující.

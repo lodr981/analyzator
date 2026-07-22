@@ -47,6 +47,9 @@ function buildContext(summary, evalResult) {
     if (a.runCadence != null) an.push(`kadence běhu ${a.runCadence} kroků/min`);
     else if (a.cadenceClimb != null) an.push(`kadence do kopců ${a.cadenceClimb} ot/min${a.grindClimbPct ? ` (${a.grindClimbPct} % stoupání pod 70)` : ''}`);
     else if (a.avgCadence != null) an.push(`průměrná kadence ${a.avgCadence} ot/min`);
+    if (a.vertOscCm != null) an.push(`vertikální oscilace ${a.vertOscCm} cm`);
+    if (a.vertRatio != null) an.push(`vertikální poměr ${a.vertRatio} %`);
+    if (a.stepLenCm != null) an.push(`délka kroku ${a.stepLenCm} cm`);
     if (a.hrDriftPct != null) an.push(`tepový drift ${a.hrDriftPct} % (${a.avgHr1}→${a.avgHr2})`);
     if (a.fadePct != null) an.push(`rozložení sil: druhá půlka ${a.fadePct > 0 ? '+' : ''}${Math.round(a.fadePct)} % rychlosti`);
     if (a.avgPower != null) an.push(`výkon ø ${a.avgPower} W${a.climbPower ? `, kopce ${a.climbPower} W` : ''}`);

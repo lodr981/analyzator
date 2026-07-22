@@ -103,11 +103,28 @@ export function analyze(samples, { sport = 'bike' } = {}) {
   // Kadence běhu = kroky/min. Garmin ukládá kroky na JEDNU nohu (~85), tak zdvojnásob.
   const runCadence = sport === 'run' && avgCad != null ? (avgCad < 120 ? avgCad * 2 : avgCad) : null;
 
+  // Běžecká dynamika (jen běh) — průměry přes vzorky s hodnotou.
+  const avgOf = (key, norm) => {
+    const v = S.map((s) => s[key]).filter((x) => x != null && x > 0).map(norm || ((x) => x));
+    return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null;
+  };
+  let stepLenCm = null, vertOscCm = null, vertRatio = null, groundMs = null;
+  if (sport === 'run') {
+    // fit-file-parser někdy vrací délky v metrech → normalizuj na mm
+    const toMm = (x) => (x < 3 ? x * 1000 : x);
+    const sl = avgOf('sl', toMm), vo = avgOf('vo', toMm);
+    stepLenCm = sl != null ? Math.round(sl / 10) : null;   // cm
+    vertOscCm = vo != null ? +(vo / 10).toFixed(1) : null; // cm
+    const vr = avgOf('vr'); vertRatio = vr != null ? +vr.toFixed(1) : null;
+    const gct = avgOf('gct'); groundMs = gct != null ? Math.round(gct < 10 ? gct * 1000 : gct) : null;
+  }
+
   return {
     sport,
     durSec: Math.round(durSec),
     hasCad, hasPwr,
     runCadence,
+    stepLenCm, vertOscCm, vertRatio, groundMs,
     avgCadence: avgCad,
     cadenceClimb: climbCadCnt ? Math.round(climbCadSum / climbCadCnt) : null,
     cadenceFlat: flatCadCnt ? Math.round(flatCadSum / flatCadCnt) : null,
