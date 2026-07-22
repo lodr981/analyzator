@@ -14,7 +14,7 @@
   <meta name="apple-mobile-web-app-title" content="TEMPO" />
   <meta name="mobile-web-app-capable" content="yes" />
 
-  <link rel="stylesheet" href="/styles.css?v=34" />
+  <link rel="stylesheet" href="/styles.css?v=35" />
 </head>
 <body>
   <div class="app">
@@ -103,6 +103,11 @@
 
         <div class="card" id="listsCard">
           <div class="lists" id="lists"></div>
+        </div>
+
+        <div class="card" id="compareCard" style="display:none">
+          <div class="lbl" style="margin-bottom:10px">📊 Vs minulý stejný trénink</div>
+          <div id="compareList"></div>
         </div>
 
         <div class="card" id="analysisCard" style="display:none">
@@ -194,6 +199,14 @@
       <div class="card" id="formLoadCard">
         <div class="lbl" style="margin-bottom:4px">Tréninková zátěž po týdnech</div>
         <div class="loadbars" id="loadbars"></div>
+      </div>
+
+      <div class="card" id="weekHoursCard">
+        <div style="display:flex;justify-content:space-between;align-items:baseline">
+          <div class="lbl">Odtrénováno hodin / týden ⏱️</div>
+          <div id="weekHoursNow" style="font-size:13px;font-weight:800;color:var(--cyan)"></div>
+        </div>
+        <div class="loadbars" id="weekHoursBars" style="margin-top:12px"></div>
       </div>
 
       <div class="statrow">
@@ -323,7 +336,7 @@
     </nav>
   </div>
 
-  <script src="/story.js?v=34"></script>
-  <script src="/app.js?v=34"></script>
+  <script src="/story.js?v=35"></script>
+  <script src="/app.js?v=35"></script>
 </body>
 </html>

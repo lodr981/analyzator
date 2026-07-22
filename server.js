@@ -480,6 +480,19 @@ async function buildWeeklyDigest() {
 
   try { const f = computeForm(acts); if (!f.empty) lines.push(`Forma: kondice ${f.fitness}, únava ${f.fatigue}, forma ${f.form} (${f.trend})`); } catch {}
 
+  // technika z tréninků týdne (kadence do kopců, drift, dojezdy v křeči)
+  const wkAnlz = wkActs.map((a) => a.summary?.analysis).filter(Boolean);
+  if (wkAnlz.length) {
+    const grind = wkAnlz.filter((x) => x.cadenceClimb != null && x.cadenceClimb < 70).length;
+    const drift = wkAnlz.filter((x) => x.hrDriftPct != null && x.hrDriftPct > 8).length;
+    const faded = wkAnlz.filter((x) => x.fadePct != null && x.fadePct < -8).length;
+    const t = [];
+    if (grind) t.push(`${grind}× mletí těžkého převodu do kopce`);
+    if (drift) t.push(`${drift}× vysoký tepový drift`);
+    if (faded) t.push(`${faded}× dojezd v křeči`);
+    if (t.length) lines.push('Technika k hlídání: ' + t.join(', '));
+  }
+
   const wkWell = wellness.filter((w) => new Date(w.date) >= wk);
   if (wkWell.length) {
     const avg = (key) => { const v = wkWell.map((w) => w[key]).filter((x) => x != null); return v.length ? Math.round((v.reduce((s, x) => s + x, 0) / v.length) * 10) / 10 : null; };

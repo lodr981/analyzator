@@ -33,12 +33,14 @@ function mondayOf(d) {
 
 export function computeForm(activities) {
   const byDay = {};
+  const byDaySec = {}; // odtrénovaný čas (s) po dnech — pro týdenní hodiny
   for (const a of activities || []) {
     const raw = a.summary?.startTime || a.ts;
     const d = new Date(raw);
     if (isNaN(d.getTime())) continue;
     const key = dayKey(d);
     byDay[key] = (byDay[key] || 0) + activityLoad(a);
+    byDaySec[key] = (byDaySec[key] || 0) + (a.summary?.durationSec || 0);
   }
 
   const days = Object.keys(byDay).sort();
@@ -64,18 +66,23 @@ export function computeForm(activities) {
   const weekAgo = daily[daily.length - 8];
   const trend = weekAgo ? (ctl > weekAgo.ctl + 0.5 ? 'up' : ctl < weekAgo.ctl - 0.5 ? 'down' : 'flat') : 'flat';
 
-  // týdenní zátěž (posledních 6 týdnů)
+  // týdenní zátěž + odtrénované hodiny (posledních 8 týdnů)
   const wkStart = mondayOf(today);
   const weeks = [];
-  for (let i = 5; i >= 0; i--) {
+  for (let i = 7; i >= 0; i--) {
     const ws = addDays(wkStart, -i * 7);
     const we = addDays(ws, 7);
-    let load = 0;
+    let load = 0, sec = 0;
     for (const [k, v] of Object.entries(byDay)) {
       const d = new Date(k + 'T00:00:00Z');
-      if (d >= ws && d < we) load += v;
+      if (d >= ws && d < we) { load += v; sec += byDaySec[k] || 0; }
     }
-    weeks.push({ label: i === 0 ? 'teď' : 'T-' + i, load: Math.round(load), current: i === 0 });
+    weeks.push({
+      label: i === 0 ? 'teď' : 'T-' + i,
+      load: Math.round(load),
+      hours: +(sec / 3600).toFixed(1),
+      current: i === 0,
+    });
   }
 
   // kalendář konzistence: denní zátěž za posledních 16 týdnů (od pondělí)

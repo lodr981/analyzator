@@ -236,6 +236,16 @@ input[type=file]{display:none}
 .pmsg.recap .recapHdr{font-weight:800;font-size:13px;letter-spacing:.02em;margin-bottom:8px;background:var(--grad);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
 #chatChips2{margin-bottom:14px}
 
+/* ===== Vs minulý trénink ===== */
+.cmprow{display:flex;align-items:baseline;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)}
+.cmprow:last-child{border-bottom:none}
+.cmplbl{flex:1;font-size:13px;color:var(--ink-2);font-weight:700}
+.cmpval{font-size:14px;font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap}
+.cmpval .cmparr{font-size:11px}
+.cmpval .cmparr.good{color:var(--volt)}
+.cmpval .cmparr.warn{color:var(--amber)}
+.cmpprev{flex:0 0 auto;font-size:11px;color:var(--ink-3);font-weight:700;min-width:70px;text-align:right}
+
 /* ===== Podrobná analýza tréninku ===== */
 .anrow{display:flex;gap:11px;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--line)}
 .anrow:last-child{border-bottom:none}

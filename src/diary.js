@@ -116,15 +116,40 @@ export function streamDiaryPdf(res, data, periodKey) {
     doc.fill(INK);
   }
 
-  // ---- forma ----
+  // ---- forma + odtrénované hodiny po týdnech ----
   try {
     const f = computeForm(allActs);
     if (!f.empty) {
       heading('Forma & zátěž (aktuální)');
       row2(`Kondice ${f.fitness}   ·   Únava ${f.fatigue}   ·   Forma ${f.form > 0 ? '+' : ''}${f.form}  (${f.trend === 'up' ? 'roste' : f.trend === 'down' ? 'klesá' : 'drží'})`);
       if (f.advice) { doc.font('r').fontSize(10).fill(MUT).text(f.advice, L, doc.y, { width: W }); doc.fill(INK); }
+      if (f.weeks?.length) {
+        const wk = f.weeks.slice(-8).map((w) => `${w.label}: ${w.hours} h`).join('   ');
+        doc.font('r').fontSize(9.5).fill(MUT).text('Hodiny/týden — ' + wk, L, doc.y + 2, { width: W });
+        doc.fill(INK);
+      }
     }
   } catch {}
+
+  // ---- technika & analýza (agregace nálezů z tréninků v období) ----
+  const anlz = acts.map((a) => a.summary?.analysis).filter(Boolean);
+  if (anlz.length) {
+    const avg = (key) => { const v = anlz.map((x) => x[key]).filter((n) => n != null); return v.length ? Math.round((v.reduce((s, n) => s + n, 0) / v.length) * 10) / 10 : null; };
+    const climbCad = avg('cadenceClimb');
+    const grindCount = anlz.filter((x) => x.cadenceClimb != null && x.cadenceClimb < 70).length;
+    const driftAvg = avg('hrDriftPct');
+    const highDrift = anlz.filter((x) => x.hrDriftPct != null && x.hrDriftPct > 8).length;
+    const fadedCount = anlz.filter((x) => x.fadePct != null && x.fadePct < -8).length;
+    const rows = [];
+    if (climbCad != null) rows.push(`Kadence do kopců ø ${climbCad} ot/min${grindCount ? `  ·  ${grindCount}× jsi mlel těžký převod (pod 70)` : ''}`);
+    if (driftAvg != null) rows.push(`Tepový drift ø ${driftAvg} %${highDrift ? `  ·  ${highDrift}× vysoký (rychlý začátek / únava)` : ''}`);
+    if (fadedCount) rows.push(`${fadedCount}× dojezd v křeči (druhá půlka výrazně pomalejší) — hlídej rozložení a jídlo`);
+    if (rows.length) {
+      heading('Technika & analýza');
+      doc.font('r').fontSize(10).fill(INK);
+      for (const r of rows) { ensure(14); doc.text('• ' + r, L, doc.y, { width: W }); }
+    }
+  }
 
   // ---- tělo: váha & výška ----
   const meas = data.measurements || [];

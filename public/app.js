@@ -138,6 +138,8 @@ function render(data) {
   $('listsCard').style.display = lists.length ? '' : 'none';
   $('lists').innerHTML = lists.join('');
 
+  renderCompare(data);
+
   const details = coach.details || [];
   $('analysisCard').style.display = details.length ? '' : 'none';
   $('analysisList').innerHTML = details.map((d) => `
@@ -153,6 +155,58 @@ function render(data) {
   loadHome(); // připravenost se mění s novou aktivitou
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
+
+// ---------- porovnání s minulým stejným tréninkem (včera vs dnes) ----------
+function paceToSec(p) {
+  const m = /^(\d+):(\d{1,2})$/.exec(String(p || ''));
+  return m ? +m[1] * 60 + +m[2] : null;
+}
+function renderCompare(data) {
+  const card = $('compareCard');
+  const cur = data.summary || {};
+  const list = loadCache();
+  const curDate = new Date(cur.startTime || data.ts).getTime();
+  // nejbližší starší trénink stejného sportu
+  const prev = list
+    .filter((a) => a.id !== data.id && (a.summary?.sport) === cur.sport && new Date(a.summary?.startTime || a.ts).getTime() < curDate)
+    .sort((a, b) => new Date(b.summary?.startTime || b.ts) - new Date(a.summary?.startTime || a.ts))[0];
+  if (!prev) { card.style.display = 'none'; return; }
+  const p = prev.summary || {};
+  const isRun = cur.sport === 'run' || cur.sport === 'swim';
+  const an = cur.analysis || {}, pan = p.analysis || {};
+
+  // metric: [label, curVal, prevVal, format, higherBetter(true/false/null)]
+  const defs = [
+    ['Vzdálenost', cur.distanceKm, p.distanceKm, (v) => v + ' km', null],
+    isRun
+      ? ['Tempo', paceToSec(cur.pacePer100m || cur.pacePerKm), paceToSec(p.pacePer100m || p.pacePerKm), (v) => secPace(v) + (cur.sport === 'swim' ? '/100m' : '/km'), false]
+      : ['Ø rychlost', cur.avgSpeedKmh, p.avgSpeedKmh, (v) => v + ' km/h', true],
+    ['Ø tep', cur.avgHr, p.avgHr, (v) => v + ' bpm', null],
+    ['Kadence do kopců', an.cadenceClimb, pan.cadenceClimb, (v) => v + ' ot', true],
+    ['Tepový drift', an.hrDriftPct, pan.hrDriftPct, (v) => v + ' %', false],
+    ['Nastoupáno', cur.elevationGainM, p.elevationGainM, (v) => v + ' m', null],
+  ];
+
+  const rows = [];
+  for (const [label, c, pv, fmt, hib] of defs) {
+    if (c == null || pv == null) continue;
+    let arrow = '', cls = '';
+    const diff = c - pv;
+    if (Math.abs(diff) > (Math.abs(pv) * 0.02 + 0.01)) {
+      arrow = diff > 0 ? '▲' : '▼';
+      if (hib === true) cls = diff > 0 ? 'good' : 'warn';
+      else if (hib === false) cls = diff < 0 ? 'good' : 'warn';
+    }
+    rows.push(`<div class="cmprow">
+      <span class="cmplbl">${label}</span>
+      <span class="cmpval">${esc(fmt(c))} <span class="cmparr ${cls}">${arrow}</span></span>
+      <span class="cmpprev">min. ${esc(fmt(pv))}</span>
+    </div>`);
+  }
+  card.style.display = rows.length ? '' : 'none';
+  $('compareList').innerHTML = rows.join('');
+}
+function secPace(s) { const m = Math.floor(s / 60); return `${m}:${String(Math.round(s % 60)).padStart(2, '0')}`; }
 
 function metricsFor(s, labels) {
   const cells = [];
@@ -513,6 +567,17 @@ async function renderForm() {
     <div class="lb ${w.current ? 'cur' : ''}">
       <div class="v">${w.load}</div>
       <div class="col" style="height:${Math.round((w.load / max) * 100)}%"></div>
+      <div class="d">${esc(w.label)}</div>
+    </div>`).join('');
+
+  // odtrénované hodiny / týden
+  const maxH = Math.max(0.1, ...data.weeks.map((w) => w.hours || 0));
+  const nowH = data.weeks[data.weeks.length - 1]?.hours || 0;
+  $('weekHoursNow').textContent = 'tento týden ' + nowH + ' h';
+  $('weekHoursBars').innerHTML = data.weeks.map((w) => `
+    <div class="lb ${w.current ? 'cur' : ''}">
+      <div class="v">${w.hours || 0}</div>
+      <div class="col" style="height:${Math.round(((w.hours || 0) / maxH) * 100)}%"></div>
       <div class="d">${esc(w.label)}</div>
     </div>`).join('');
 
